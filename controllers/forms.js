@@ -7,14 +7,14 @@ var fs = require('fs'),
 // removes form: prefix on form docs
 function removePrefix(str) {
   return str.split(':').slice(1).join(':');
-};
+}
 
 function getSimpleXMLFormEl(doc) {
   return '<form url="{{base}}{{id}}.xml">{{name}}</form>'
     .replace('{{base}}', 'http://192.168.0.3:5988/api/v1/forms/')
     .replace('{{id}}', removePrefix(doc._id))
-    .replace('{{name}}', doc.name || 'PregnancyRegistration')
-};
+    .replace('{{name}}', doc.name || 'PregnancyRegistration');
+}
 
 /**
  * Take view data and prepare forms list for openrosa lib call that generates
@@ -56,7 +56,7 @@ function listFormsXML(data, template, callback) {
     };
     callback(null, xml, headers);
   });
-};
+}
 
 /*
  *  Take view data and return simple list of forms in JSON format. The returned
@@ -81,7 +81,7 @@ function listForms(data, callback) {
     'Content-Type': 'application/json; charset=utf-8'
   };
   callback(null, JSON.stringify(ret), headers);
-};
+}
 
 module.exports = {
   listForms: function(headers, callback) {
