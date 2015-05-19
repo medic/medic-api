@@ -30,6 +30,7 @@ var _ = require('underscore'),
     exportData = require('./controllers/export-data'),
     messages = require('./controllers/messages'),
     records = require('./controllers/records'),
+    forms = require('./controllers/forms'),
     fti = require('./controllers/fti'),
     createDomain = require('domain').create,
     staticResources = /\/(templates|static)\//,
@@ -333,6 +334,42 @@ app.post('/api/v1/records', [jsonParser, formParser], function(req, res) {
       }
       res.json(result);
     });
+  });
+});
+
+app.get('/api/v1/forms', function(req, res) {
+  forms.listForms(req.headers, function(err, body, headers) {
+      if (err) {
+        console.error(err);
+        return error(err, res);
+      }
+      if (headers) {
+        res.writeHead(headers.statusCode || 200, headers);
+      }
+      res.end(body);
+      //res.end(fs.readFileSync('/Users/mandric/tmp/formList2.xml'));
+  });
+});
+
+/*
+ * Handle requests for a specific form and format.
+ */
+app.get('/api/v1/forms/:form', function(req, res) {
+  var parts = req.params.form.split('.'),
+      form = parts.slice(0, -1).join('.'),
+      format = parts.slice(-1)[0];
+  if (!form || !format) {
+    return callback("Invalid form parameter.");
+  }
+  forms.getForm(form, format, function(err, body, headers) {
+    if (err) {
+      console.error(err);
+      return error(err, res);
+    }
+    if (headers) {
+      res.writeHead(headers.statusCode || 200, headers);
+    }
+    res.end(body);
   });
 });
 
