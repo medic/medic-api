@@ -9,8 +9,7 @@ Respond with HTTP 200 status on successful requests.
 
 ## GET /api/v1/forms
 
-Returns a list of currently installed forms (in all available formats)in JSON format.
-
+Returns a list of currently installed forms (in all available formats) in JSON format.
 
 ### Headers 
 
@@ -25,6 +24,7 @@ Get list of forms currently installed.
 ```
 GET /api/v1/forms
 ```
+
 ```
 HTTP/1.1 200 
 Content-Type: application/json; charset=utf-8
@@ -36,7 +36,9 @@ Get OpenRosa XForms compatible forms installed in XML format.
 
 ```
 GET /api/v1/forms
+Host: medic.local
 X-OpenRosa-Version: 1.0
+
 ```
 
 ```
