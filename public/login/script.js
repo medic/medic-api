@@ -56,6 +56,11 @@ var pressed = function(e) {
   }
 };
 
-document.getElementById('user').focus();
-document.getElementById('login').addEventListener('click', submit, false);
-document.getElementById('password').addEventListener('keypress', pressed, false);
+var initDom = setInterval(function() {
+  if(/^interactive|complete|loaded$/.test(document.readyState)) {
+    clearInterval(initDom);
+    document.getElementById('user').focus();
+    document.getElementById('login').addEventListener('click', submit, false);
+    document.getElementById('password').addEventListener('keypress', pressed, false);
+  }
+}, 10);
