@@ -4,7 +4,6 @@ HTTP response bodies are all in JSON format.
 
 Respond with HTTP 200 status on successful requests.
 
-
 # Forms
 
 ## GET /api/v1/forms
@@ -139,7 +138,6 @@ All property names will be lowercased and any properties beginning with `_` (und
 | _meta.locale | Optional locale string.  Example: 'fr' |
     
 
-
 ### Examples
 
 Creating new record using message field.
@@ -187,6 +185,7 @@ Content-Type: application/json; charset=utf-8
   "id": "364c796a843fbe0a73476f9153012733"
 }
 ```
+
 ### Errors
 
 If required fields are not found return 500.
@@ -209,7 +208,6 @@ Returns list of messages, oldest first based on timestamp or due date.
 | start (todo)       | Returns list of messages, limited to 25 starting at id (uuid). 
 | descending         | Returns latest messages first.
 | limit              | Modifies number of returned messages to specified value, max is 1000.
-
 
 ### Examples
 
@@ -396,10 +394,9 @@ Content-Type: application/json; charset=utf-8
 }
 ```
 
-### Todo
+## Todo
 
 Should updating the state value of a message require the doc revision?
-
 
 ## Backwards Compatibility
 

@@ -1,7 +1,5 @@
 var _ = require('underscore'),
-    moment = require('moment'),
     utils = require('./utils');
-
 
 var getRegistrationPatientIds = function(options, callback) {
   options.minWeeksPregnant = 42;
@@ -14,8 +12,8 @@ var getRegistrationPatientIds = function(options, callback) {
       var doc = row.doc;
       return {
         patient_id: doc.patient_id,
-        patient_name: doc.patient_name,
-        clinic: doc.related_entities && doc.related_entities.clinic,
+        patient_name: doc.fields && doc.fields.patient_name,
+        contact: doc.contact,
         edd: utils.getEDD(doc)
       };
     }));

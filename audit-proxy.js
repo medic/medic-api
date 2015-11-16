@@ -33,8 +33,8 @@ AuditProxy.prototype.audit = function(proxy, req, res) {
 
   var self = this;
 
-  auth.getUserCtx(req, function(err, ctx) {
-    if (err || !ctx || !ctx.name) {
+  auth.check(req, 'can_edit', null, function(err, ctx) {
+    if (err || !ctx || !ctx.user) {
       self.emit('not-authorized');
       return;
     }
@@ -58,23 +58,26 @@ AuditProxy.prototype.audit = function(proxy, req, res) {
         return cb();
       }
 
-      couchdbAudit.withNode(db, ctx.name).log([doc], function(err) {
-        if (err) {
-          return cb(err);
-        }
-        data = JSON.stringify(doc);
-        // audit might modify the doc (eg: generating an id)
-        // so we need to update the content-length header
-        req.headers['content-length'] = Buffer.byteLength(data);
-        proxy.web(req, res, options);
-        self.push(data);
-        return cb();
-      });
+      couchdbAudit
+        .withNano(db, db.settings.db, db.settings.ddoc, ctx.user)
+        .log(doc.docs || [doc], function(err) {
+          if (err) {
+            return cb(err);
+          }
+          data = JSON.stringify(doc);
+          // audit might modify the doc (eg: generating an id)
+          // so we need to update the content-length header
+          req.headers['content-length'] = Buffer.byteLength(data);
+          proxy.web(req, res, options);
+          self.push(data);
+          return cb();
+        });
     };
 
     var ps = passStream(writeFn, endFn);
     var buffer = req.pipe(ps);
     buffer.on('error', function(e) {
+      console.log('ERROR', e);
       self.emit('error', e);
     });
     buffer.destroy = function() {};

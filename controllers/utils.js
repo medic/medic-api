@@ -3,29 +3,26 @@ var _ = require('underscore'),
     async = require('async'),
     db = require('../db'),
     config = require('../config'),
-    luceneConditionalLimit = 1000;
+    luceneConditionalLimit = 1000,
+    noLmpDateModifier = 4;
 
 var formatDate = function(date) {
   return date.zone(0).format('YYYY-MM-DD');
 };
 
-var collectPatientIds = function(records) {
-  return _.map(records.rows, function(row) {
-    return row.doc.patient_id;
-  });
+var formatDateRange = function(field, startDate, endDate) {
+  var start = formatDate(startDate);
+  var end = endDate ? formatDate(endDate.clone().add(1, 'days')) : '9999-01-01';
+  return field + '<date>:[' + start + ' TO ' + end + ']';
 };
 
 var getFormCode = function(key) {
   return config.get('anc_forms')[key];
 };
 
-var fti = function(options, callback) {
-  var queryOptions = {
-    q: options.q,
-    include_docs: options.include_docs,
-    limit: options.limit
-  };
-  db.fti('data_records', queryOptions, function(err, result) {
+var fti = function(index, options, callback) {
+  var queryOptions = _.pick(options, 'q', 'sort', 'skip', 'limit', 'include_docs');
+  db.fti(index, queryOptions, function(err, result) {
     if (err) {
       return callback(err);
     }
@@ -40,6 +37,7 @@ var fti = function(options, callback) {
 
 var ftiWithPatientIds = function(options, callback) {
   if (options.patientIds) {
+    options.patientIds = _.compact(options.patientIds);
     if (options.patientIds.length === 0) {
       return callback(null, { total_rows: 0, rows: [] });
     }
@@ -47,10 +45,10 @@ var ftiWithPatientIds = function(options, callback) {
     var chunks = chunk(options.patientIds, luceneConditionalLimit);
     async.reduce(chunks, { rows: [], total_rows: 0 }, function(memo, ids, callback) {
       var queryOptions = {
-        q: options.q + ' AND patient_id:(' + ids.join(' OR ') + ')',
+        q: options.q + ' AND patient_id:(' + _.compact(ids).join(' OR ') + ')',
         include_docs: options.include_docs
       };
-      fti(queryOptions, function(err, result) {
+      fti('data_records', queryOptions, function(err, result) {
         if (err) {
           return callback(err);
         }
@@ -61,7 +59,7 @@ var ftiWithPatientIds = function(options, callback) {
       });
     }, callback);
   } else {
-    fti(options, callback);
+    fti('data_records', options, callback);
   }
 };
 
@@ -82,29 +80,40 @@ var chunk = function(items, size) {
   return chunks;
 };
 
+var uniquePerPatientId = function(rows) {
+  var ids = [];
+  return _.reject(rows, function(row) {
+    var id = row.doc.fields.patient_id;
+    if (_.contains(ids, id)) {
+      return true;
+    }
+    ids.push(id);
+    return false;
+  });
+};
+
 module.exports = {
 
   getFormCode: getFormCode,
   fti: fti,
-
-  formatDateRange: function(field, startDate, endDate) {
-    var start = formatDate(startDate);
-    var end = formatDate(endDate.clone().add(1, 'days'));
-    return field + '<date>:[' + start + ' TO ' + end + ']';
-  },
+  formatDateRange: formatDateRange,
 
   getAllRegistrations: function(options, callback) {
-    var minWeeksPregnant = options.minWeeksPregnant || 0;
-    var maxWeeksPregnant = options.maxWeeksPregnant || 42;
-    var startDate = moment().subtract(maxWeeksPregnant, 'weeks');
-    var endDate = moment().subtract(minWeeksPregnant, 'weeks');
-    var rDateCriteria = module.exports.formatDateRange('reported_date', startDate, endDate);
-    var pDateCriteria = module.exports.formatDateRange('lmp_date', startDate.subtract(2, 'weeks'), endDate.subtract(2, 'weeks'));
-    var query = 'errors<int>:0 AND (' +
-      '(form:' + getFormCode('registration') + ' AND ' + rDateCriteria + ')' +
-      ' OR ' +
-      '(form:' + getFormCode('registrationLmp') + ' AND ' + pDateCriteria + ')' +
-      ')';
+    var startDate = options.startDate;
+    var endDate = options.endDate;
+
+    if (!startDate || !endDate) {
+      startDate = moment().subtract(options.maxWeeksPregnant || 42, 'weeks');
+      endDate = moment().subtract(options.minWeeksPregnant || 0, 'weeks');
+    }
+
+    // add 40 weeks to get edd
+    startDate = startDate.clone().add(40, 'weeks');
+    endDate = endDate.clone().add(40, 'weeks');
+
+    var query = 'errors<int>:0 ' +
+      'AND form:("' + getFormCode('registration') + '" OR "' + getFormCode('registrationLmp') + '") ' +
+      'AND ' + formatDateRange('expected_date', startDate, endDate);
     if (options.district) {
       query += ' AND district:"' + options.district + '"';
     }
@@ -120,14 +129,26 @@ module.exports = {
       callback = options;
       options = {};
     }
-    options.q = 'form:' + getFormCode('delivery');
+    var query = 'form:' + getFormCode('delivery');
     if (options.startDate && options.endDate) {
-      options.q += ' AND ' + module.exports.formatDateRange('reported_date', options.startDate, options.endDate);
+      query += ' AND ' + formatDateRange('reported_date', options.startDate, options.endDate);
     }
     if (options.district) {
-      options.q += ' AND district:"' + options.district + '"';
+      query += ' AND district:"' + options.district + '"';
     }
-    ftiWithPatientIds(options, callback);
+    ftiWithPatientIds(
+      {
+        q: query,
+        include_docs: true,
+        patientIds: options.patientIds
+      },
+      function(err, results) {
+        if (err) {
+          return callback(err);
+        }
+        callback(null, uniquePerPatientId(results.rows));
+      }
+    );
   },
 
   getBirthPatientIds: function(options, callback) {
@@ -142,10 +163,13 @@ module.exports = {
         if (err) {
           return callback(err);
         }
-        callback(null, _.union(
-          collectPatientIds(deliveries),
-          collectPatientIds(registrations)
-        ));
+        var deliveryIds = _.map(deliveries, function(delivery) {
+          return delivery.doc.fields.patient_id;
+        });
+        var registrationsIds = _.map(registrations.rows, function(registration) {
+          return registration.doc.patient_id;
+        });
+        callback(null, _.union(deliveryIds, registrationsIds));
       });
     });
   },
@@ -162,8 +186,8 @@ module.exports = {
         return callback(err);
       }
       var undelivered = _.reject(objects, function(object) {
-        return _.some(deliveries.rows, function(delivery) {
-          return delivery.doc.patient_id === object.patient_id;
+        return _.some(deliveries, function(delivery) {
+          return delivery.doc.fields.patient_id === object.patient_id;
         });
       });
       callback(null, undelivered);
@@ -176,35 +200,34 @@ module.exports = {
     }
     var query = 'form:' + getFormCode('visit');
     if (options.startDate) {
-      query += ' AND ' + module.exports.formatDateRange(
-        'reported_date', options.startDate, options.endDate || moment().add(2, 'days')
+      query += ' AND ' + formatDateRange(
+        'reported_date', options.startDate, options.endDate
       );
     }
     ftiWithPatientIds({ q: query, include_docs: true, patientIds: options.patientIds }, callback);
   },
 
-
   getWeeksPregnant: function(doc) {
     if (doc.form === 'R') {
       return {
-        number: moment().diff(moment(doc.reported_date), 'weeks'),
+        number: moment().diff(moment(doc.reported_date), 'weeks') + noLmpDateModifier,
         approximate: true
       };
     }
     return {
-      number: moment().diff(moment(doc.lmp_date), 'weeks') - 2
+      number: moment().diff(moment(doc.lmp_date), 'weeks')
     };
   },
 
   getEDD: function(doc) {
     if (doc.form === 'R') {
       return {
-        date: moment(doc.reported_date).add(40, 'weeks'),
+        date: moment(doc.reported_date).add(40 - noLmpDateModifier, 'weeks'),
         approximate: true
       };
     }
     return {
-      date: moment(doc.lmp_date).add(42, 'weeks')
+      date: moment(doc.lmp_date).add(40, 'weeks')
     };
   },
 
@@ -215,7 +238,7 @@ module.exports = {
         return callback(err);
       }
       var count = _.countBy(visits.rows, function(visit) {
-        return visit.doc.patient_id;
+        return visit.doc.fields.patient_id;
       });
       _.each(objects, function(object) {
         object.visits = count[object.patient_id] || 0;
@@ -231,13 +254,20 @@ module.exports = {
         return callback(err);
       }
       _.each(risks.rows, function(risk) {
-        var object = _.findWhere(objects, { patient_id: risk.doc.patient_id });
+        var object = _.findWhere(objects, { patient_id: risk.doc.fields.patient_id });
         if (object) {
           object.high_risk = true;
         }
       });
       callback(null, objects);
     });
+  },
+
+  getParent: function(facility, type) {
+    while (facility && facility.type !== type) {
+      facility = facility.parent;
+    }
+    return facility;
   },
 
   // exposed for testing

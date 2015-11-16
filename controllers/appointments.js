@@ -16,7 +16,7 @@ var getAppointmentDate = function(options, registration) {
 };
 
 var getAppointments = function(options, callback) {
-  utils.getAllRegistrations(options, function(err, registrations) {
+  utils.getAllRegistrations({}, function(err, registrations) {
     if (err) {
       return callback(err);
     }
@@ -26,9 +26,9 @@ var getAppointments = function(options, callback) {
         var date = getAppointmentDate(options, doc);
         if (date) {
           return {
-            patient_name: doc.patient_name,
+            patient_name: doc.fields && doc.fields.patient_name,
             patient_id: doc.patient_id,
-            clinic: doc.related_entities && doc.related_entities.clinic,
+            contact: doc.contact,
             date: date,
             weeks: utils.getWeeksPregnant(doc)
           };
@@ -52,7 +52,7 @@ var rejectVisits = function(appointments, callback) {
     }
     callback(null, _.reject(appointments, function(appointment) {
       return _.some(visits.rows, function(visit) {
-        return visit.doc.patient_id === appointment.patient_id;
+        return visit.doc.fields.patient_id === appointment.patient_id;
       });
     }));
   });

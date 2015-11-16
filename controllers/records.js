@@ -1,73 +1,68 @@
 var _ = require('underscore'),
-    db = require('../db-nano'),
-    logger = console;
+    db = require('../db');
 
-var _exists = function(val) {
-    if (val === '') {
-        return false;
+var exists = function(val) {
+  return val !== '' && typeof val !== 'undefined';
+};
+
+var request = function(opts, callback) {
+  opts.path = db.getPath() + '/add';
+  opts.method = 'POST';
+  db.request(opts, function(err, results) {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, {
+        success: results.payload.success,
+        id: results.payload.id
+      });
+  });
+};
+
+var createByForm = function(data, callback) {
+  var required = ['message', 'from'],
+      optional = ['reported_date', 'locale'];
+  for (var k in required) {
+    if (!exists(data[required[k]])) {
+      return callback(new Error('Missing required field: ' + required[k]));
     }
-    if (typeof val === 'undefined') {
-        return false;
+  }
+  // filter out any unwanted fields
+  var content = _.pick(data, required.concat(optional));
+  request({
+    form: content,
+    content_type: 'application/x-www-form-urlencoded'
+  }, callback);
+};
+
+var createRecordByJSON = function(data, callback) {
+  var required = ['from', 'form'],
+      optional = ['reported_date', 'locale'];
+  // check required fields are in _meta property
+  if (!exists(data._meta)) {
+    return callback(new Error('Missing _meta property.'));
+  }
+  for (var k in required) {
+    if (!exists(data._meta[required[k]])) {
+      return callback(new Error('Missing required field: ' + required[k]));
     }
-    return true;
+  }
+  // filter out any unwanted fields
+  data._meta = _.pick(data._meta, required.concat(optional));
+  // no need to pass the content type as nano.request defaults to json.
+  request({ body: data }, callback);
 };
 
 module.exports = {
-  createRecord: function(data, district, callback) {
-    var opts = {
-      path: db.getPath() + '/add',
-      method: 'POST',
-      content_type: 'application/x-www-form-urlencoded'
-    };
-    var required = ['message', 'from'],
-        optional = ['reported_date', 'locale'];
-    for (var k in required) {
-      if (!_exists(data[required[k]])) {
-        return callback(new Error('Missing required fields: ' + required[k]));
-      }
+  create: function(data, contentType, callback) {
+    var create;
+    if (contentType === 'urlencoded') {
+      create = createByForm;
+    } else if (contentType === 'json') {
+      create = createRecordByJSON;
+    } else {
+      return callback(new Error('Content type not supported.'));
     }
-    // filter out any unwanted fields
-    opts.form = _.pick(data, required.concat(optional));
-    db.request(opts, function(err, results) {
-        if (err) {
-          return callback(err);
-        }
-        callback(null, {
-          success: results.payload.success,
-          id: results.payload.id
-        });
-    });
+    create(data, callback);
   },
-  createRecordJSON: function(data, district, callback) {
-    // nano.request defaults to json content type.
-    var opts = {
-      path: db.getPath() + '/add',
-      method: 'POST'
-    };
-    var required = ['from', 'form'],
-        optional = ['reported_date', 'locale'];
-    // check required fields are in _meta property
-    if (!_exists(data._meta)) {
-      return callback(new Error('Missing _meta property.'));
-    }
-    for (var k in required) {
-      if (!_exists(data._meta[required[k]])) {
-        return callback(new Error('Missing required fields: ' + required[k]));
-      }
-    }
-    // filter out any unwanted fields
-    data._meta = _.pick(data._meta, required.concat(optional));
-    opts.body = data;
-    db.request(opts, function(err, results) {
-        if (err) {
-          // nano creates a new error object merging the error object received
-          // from the server, reformat it.
-          return callback(err);
-        }
-        callback(null, {
-          success: results.payload.success,
-          id: results.payload.id
-        });
-    });
-  }
 };
