@@ -10,10 +10,10 @@ var getPregnancies = function(options, callback) {
     callback(null, _.map(registrations.rows, function(registration) {
       var doc = registration.doc;
       return {
-        patient_name: doc.patient_name,
+        patient_name: doc.fields && doc.fields.patient_name,
         patient_id: doc.patient_id,
         weeks: utils.getWeeksPregnant(doc),
-        clinic: doc.related_entities && doc.related_entities.clinic,
+        contact: doc.contact,
         high_risk: true
       };
     }));
@@ -22,13 +22,12 @@ var getPregnancies = function(options, callback) {
 
 var findFlagged = function(options, callback) {
   var startDate = moment().subtract(44, 'weeks');
-  var endDate = moment();
-  var dateCriteria = utils.formatDateRange('reported_date', startDate, endDate);
+  var dateCriteria = utils.formatDateRange('reported_date', startDate);
   var query = 'errors<int>:0 AND form:' + utils.getFormCode('flag') + ' AND ' + dateCriteria;
   if (options.district) {
     query += ' AND district:"' + options.district + '"';
   }
-  utils.fti({ q: query, include_docs: true }, callback);
+  utils.fti('data_records', { q: query, include_docs: true }, callback);
 };
 
 module.exports = {
@@ -38,7 +37,7 @@ module.exports = {
         return callback(err);
       }
       options.patientIds = _.map(flagged.rows, function(row) {
-        return row.doc.patient_id;
+        return row.doc.fields && row.doc.fields.patient_id;
       });
       getPregnancies(options, function(err, pregnancies) {
         if (err) {

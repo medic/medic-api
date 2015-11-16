@@ -1,4 +1,4 @@
-var db = require('../db-nano');
+var db = require('../db');
 
 module.exports = {
 
@@ -61,7 +61,7 @@ module.exports = {
         if (err) {
           // nano creates a new error object merging the error object received
           // from the server.
-          return callback(err);//{code: err.statusCode, message: err.payload.error});
+          return callback(err);
         }
         callback(null, {
           success: data.payload.success,

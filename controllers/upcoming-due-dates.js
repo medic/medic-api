@@ -12,7 +12,7 @@ var getPregnancies = function(options, callback) {
     callback(null, _.map(registrations.rows, function(registration) {
       var doc = registration.doc;
       return {
-        patient_name: doc.patient_name,
+        patient_name: doc.fields && doc.fields.patient_name,
         patient_id: doc.patient_id,
         weeks: utils.getWeeksPregnant(doc),
         edd: utils.getEDD(doc)
@@ -35,7 +35,7 @@ var getAppointmentDates = function(pregnancies, callback) {
     _.each(pregnancies, function(pregnancy) {
       var count = 0;
       _.each(visits.rows, function(visit) {
-        if (visit.doc.patient_id === pregnancy.patient_id) {
+        if (visit.doc.fields.patient_id === pregnancy.patient_id) {
           count++;
           var appointmentDate = moment(visit.doc.reported_date);
           if (!pregnancy.lastAppointmentDate || 

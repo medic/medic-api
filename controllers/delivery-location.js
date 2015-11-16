@@ -9,14 +9,14 @@ module.exports = {
       startkey: [district],
       endkey: [district, {}]
     };
-    db.getView('delivery_reports_by_district_and_code', query, function(err, response) {
+    db.medic.view('medic', 'delivery_reports_by_district_and_code', query, function(err, response) {
       if (err) {
         return callback(err);
       }
       if (!response || !response.rows) {
         return callback(null, []);
       }
-      callback(err, _.map(['F','S','NS'], function(code) {
+      callback(null, _.map(['F','S','NS'], function(code) {
         var row = _.find(response.rows, function(row) {
           return row.key[1] === code;
         });

@@ -1,6 +1,6 @@
-var utils = require('../controllers/utils'),
-    db = require('../db'),
-    config = require('../config'),
+var utils = require('../../controllers/utils'),
+    db = require('../../db'),
+    config = require('../../config'),
     moment = require('moment'),
     sinon = require('sinon');
 
@@ -24,20 +24,43 @@ exports.tearDown = function (callback) {
 
 exports['getAllRegistrations generates correct query'] = function(test) {
   test.expect(3);
-  var get = sinon.stub(config, 'get').returns({
+  sinon.stub(config, 'get').returns({
     registration: 'R',
     registrationLmp: 'P'
   });
   var fti = sinon.stub(db, 'fti').callsArgWith(2, null, 'results');
-  var start = moment().subtract(20, 'weeks').zone(0);
-  var end = moment().subtract(10, 'weeks').add(1, 'days').zone(0);
-  var rStart = start.format('YYYY-MM-DD');
-  var rEnd = end.format('YYYY-MM-DD');
-  var pStart = start.subtract(2, 'weeks').format('YYYY-MM-DD');
-  var pEnd = end.subtract(2, 'weeks').format('YYYY-MM-DD');
-  var expected = 'errors<int>:0 AND ' +
-      '((form:R AND reported_date<date>:[' + rStart + ' TO ' + rEnd + ']) OR ' +
-      '(form:P AND lmp_date<date>:[' + pStart + ' TO ' + pEnd + ']))';
+  var start = moment().subtract(1, 'month').zone(0);
+  var end = moment().zone(0);
+  var expected = 'errors<int>:0 ' +
+      'AND form:("R" OR "P") ' +
+      'AND expected_date<date>:[' +
+        start.clone().add(40, 'weeks').format('YYYY-MM-DD') +
+        ' TO ' +
+        end.clone().add(40, 'weeks').add(1, 'days').format('YYYY-MM-DD') +
+      ']';
+  utils.getAllRegistrations({
+    startDate: start,
+    endDate: end
+  }, function(err, results) {
+    test.equals(results, 'results');
+    test.equals(fti.callCount, 1);
+    test.equals(fti.args[0][1].q, expected);
+    test.done();
+  });
+};
+
+exports['getAllRegistrations generates correct query when min and max weeks pregnant provided'] = function(test) {
+  test.expect(3);
+  sinon.stub(config, 'get').returns({
+    registration: 'R',
+    registrationLmp: 'P'
+  });
+  var fti = sinon.stub(db, 'fti').callsArgWith(2, null, 'results');
+  var start = moment().add(40, 'weeks').subtract(20, 'weeks').zone(0).format('YYYY-MM-DD');
+  var end = moment().add(40, 'weeks').subtract(10, 'weeks').add(1, 'days').zone(0).format('YYYY-MM-DD');
+  var expected = 'errors<int>:0 ' +
+      'AND form:("R" OR "P") ' +
+      'AND expected_date<date>:[' + start + ' TO ' + end + ']';
   utils.getAllRegistrations({
     minWeeksPregnant: 10,
     maxWeeksPregnant: 20
@@ -51,21 +74,17 @@ exports['getAllRegistrations generates correct query'] = function(test) {
 
 exports['getAllRegistrations generates correct query when patientIds provided'] = function(test) {
   test.expect(5);
-  var get = sinon.stub(config, 'get').returns({
+  sinon.stub(config, 'get').returns({
     registration: 'R',
     registrationLmp: 'P'
   });
   var fti = sinon.stub(db, 'fti').callsArgWith(2, null, { rows: [ 'result' ], total_rows: 1 });
-  var start = moment().subtract(20, 'weeks').zone(0);
-  var end = moment().subtract(10, 'weeks').add(1, 'days').zone(0);
-  var rStart = start.format('YYYY-MM-DD');
-  var rEnd = end.format('YYYY-MM-DD');
-  var pStart = start.subtract(2, 'weeks').format('YYYY-MM-DD');
-  var pEnd = end.subtract(2, 'weeks').format('YYYY-MM-DD');
-  var expected = 'errors<int>:0 AND ' +
-      '((form:R AND reported_date<date>:[' + rStart + ' TO ' + rEnd + ']) OR ' +
-      '(form:P AND lmp_date<date>:[' + pStart + ' TO ' + pEnd + '])) AND ' +
-      'patient_id:(1345 OR 532)';
+  var start = moment().add(40, 'weeks').subtract(20, 'weeks').zone(0).format('YYYY-MM-DD');
+  var end = moment().add(40, 'weeks').subtract(10, 'weeks').add(1, 'days').zone(0).format('YYYY-MM-DD');
+  var expected = 'errors<int>:0 ' +
+      'AND form:("R" OR "P") ' +
+      'AND expected_date<date>:[' + start + ' TO ' + end + '] ' +
+      'AND patient_id:(1345 OR 532)';
   utils.getAllRegistrations({
     patientIds: ['1345', '532'],
     minWeeksPregnant: 10,
@@ -82,22 +101,18 @@ exports['getAllRegistrations generates correct query when patientIds provided'] 
 
 exports['getAllRegistrations generates multiple queries when over limit'] = function(test) {
   test.expect(6);
-  var get = sinon.stub(config, 'get').returns({
+  sinon.stub(config, 'get').returns({
     registration: 'R',
     registrationLmp: 'P'
   });
   var fti = sinon.stub(db, 'fti');
   fti.onFirstCall().callsArgWith(2, null, { rows: [ '1', '2', '3' ], total_rows: 3 });
   fti.onSecondCall().callsArgWith(2, null, { rows: [ '4', '5' ], total_rows: 2 });
-  var start = moment().subtract(20, 'weeks').zone(0);
-  var end = moment().subtract(10, 'weeks').add(1, 'days').zone(0);
-  var rStart = start.format('YYYY-MM-DD');
-  var rEnd = end.format('YYYY-MM-DD');
-  var pStart = start.subtract(2, 'weeks').format('YYYY-MM-DD');
-  var pEnd = end.subtract(2, 'weeks').format('YYYY-MM-DD');
-  var expected = 'errors<int>:0 AND ' +
-      '((form:R AND reported_date<date>:[' + rStart + ' TO ' + rEnd + ']) OR ' +
-      '(form:P AND lmp_date<date>:[' + pStart + ' TO ' + pEnd + ']))';
+  var start = moment().add(40, 'weeks').subtract(20, 'weeks').zone(0).format('YYYY-MM-DD');
+  var end = moment().add(40, 'weeks').subtract(10, 'weeks').add(1, 'days').zone(0).format('YYYY-MM-DD');
+  var expected = 'errors<int>:0 ' +
+      'AND form:("R" OR "P") ' +
+      'AND expected_date<date>:[' + start + ' TO ' + end + ']';
   utils.setup(3);
   utils.getAllRegistrations({
     patientIds: ['3', '1', '2', '5', '4'],

@@ -1,5 +1,4 @@
 var utils = require('./utils'),
-    db = require('../db'),
     _ = require('underscore');
 
 module.exports = {
@@ -19,7 +18,7 @@ module.exports = {
           return callback(err);
         }
         callback(null, {
-          count: patientIds.length - deliveries.total_rows
+          count: patientIds.length - deliveries.length
         });
       });
     });

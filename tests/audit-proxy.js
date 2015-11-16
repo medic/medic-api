@@ -1,7 +1,7 @@
 var AuditProxy = require('../audit-proxy');
 
 exports['audit audits the request'] = function(test) {
-  test.expect(4);
+  test.expect(6);
   var target = 'http://localhost:4444';
   var generatedId = 'abc';
   var username = 'steve';
@@ -15,8 +15,10 @@ exports['audit audits the request'] = function(test) {
     _id: generatedId
   };
   var audit = {
-    withNode: function(db, _username) {
+    withNano: function(db, _db, _ddoc, _username) {
       test.same(username, _username);
+      test.same('medic', _db);
+      test.same('medic', _ddoc);
       return {
         log: function(docs, _cb) {
           test.same(docs[0], doc);
@@ -27,7 +29,7 @@ exports['audit audits the request'] = function(test) {
     }
   };
   var proxy = {
-    web: function(req, res, options) {
+    web: function(req) {
       test.equals(
         Buffer.byteLength(JSON.stringify(auditedDoc)),
         req.headers['content-length']
@@ -41,23 +43,27 @@ exports['audit audits the request'] = function(test) {
     });
     endFn.call({push: function(body) {
       test.equals(body, JSON.stringify(auditedDoc));
-    }}, function(err) {});
+    }}, function() {});
   };
   var req = {
     headers: {},
-    pipe: function(ps) {
-      return { on: function(eventName, callback) {} };
+    pipe: function() {
+      return { on: function() {} };
     }
   };
   var db = {
     client: {
       host: 'localhost',
       port: 5984
+    },
+    settings: {
+      db: 'medic',
+      ddoc: 'medic'
     }
   };
   var auth = {
-    getUserCtx: function(req, cb) {
-      cb(null, { name: username });
+    check: function(req, permission, district, cb) {
+      cb(null, { user: username });
     }
   };
   var p = new AuditProxy();
@@ -72,7 +78,7 @@ exports['audit does not audit non json request'] = function(test) {
   var username = 'steve';
   var doc = 'message_id=15095&sent_timestamp=1396224953456&message=ANCR+jessiec+18+18&from=%2B13125551212';
   var proxy = {
-    web: function(req, res, options) {}
+    web: function() {}
   };
   var passStreamFn = function(writeFn, endFn) {
     var chunks = doc.match(/.{1,4}/g);
@@ -81,16 +87,16 @@ exports['audit does not audit non json request'] = function(test) {
     });
     endFn.call({push: function(body) {
       test.equals(body, doc);
-    }}, function(err) {});
+    }}, function() {});
   };
   var req = {
-    pipe: function(ps) {
-      return { on: function(eventName, callback) {} };
+    pipe: function() {
+      return { on: function() {} };
     }
   };
   var auth = {
-    getUserCtx: function(req, cb) {
-      cb(null, { name: username });
+    check: function(req, permission, district, cb) {
+      cb(null, { user: username });
     }
   };
 
@@ -106,8 +112,8 @@ exports['audit emits error when not authorized'] = function(test) {
   var proxy = {};
   var req = {};
   var auth = {
-    getUserCtx: function(req, cb) {
-      cb('Not logged in');
+    check: function(req, permission, district, cb) {
+      cb({ code: 401 });
     }
   };
   var p = new AuditProxy();
@@ -133,7 +139,7 @@ exports['audit emits errors when stream emits errors'] = function(test) {
     _id: generatedId
   };
   var audit = {
-    withNode: function(db, _username) {
+    withNano: function(db, _db, _ddoc, _username) {
       test.same(username, _username);
       return {
         log: function(docs, _cb) {
@@ -143,7 +149,7 @@ exports['audit emits errors when stream emits errors'] = function(test) {
     }
   };
   var proxy = {
-    web: function(req, res, options) {
+    web: function(req) {
       test.equals(
         Buffer.byteLength(JSON.stringify(auditedDoc)),
         req.headers['content-length']
@@ -158,7 +164,7 @@ exports['audit emits errors when stream emits errors'] = function(test) {
   };
   var req = {
     headers: {},
-    pipe: function(ps) {
+    pipe: function() {
       return {
         on: function(eventName, callback) {
           if (eventName === 'error') {
@@ -182,11 +188,15 @@ exports['audit emits errors when stream emits errors'] = function(test) {
     client: {
       host: 'localhost',
       port: 5984
+    },
+    settings: {
+      db: 'medic',
+      ddoc: 'medic'
     }
   };
   var auth = {
-    getUserCtx: function(req, cb) {
-      cb(null, { name: username });
+    check: function(req, permission, district, cb) {
+      cb(null, { user: username });
     }
   };
   var p = new AuditProxy();

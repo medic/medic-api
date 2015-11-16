@@ -1,6 +1,6 @@
-var controller = require('../controllers/monthly-registrations'),
-    db = require('../db'),
-    config = require('../config'),
+var controller = require('../../controllers/monthly-registrations'),
+    db = require('../../db'),
+    config = require('../../config'),
     moment = require('moment'),
     sinon = require('sinon');
 
@@ -26,7 +26,7 @@ exports.tearDown = function(callback) {
 exports['get returns errors'] = function(test) {
   test.expect(2);
   var fti = sinon.stub(db, 'fti').callsArgWith(2, 'bang');
-  controller.get({}, function(err, results) {
+  controller.get({}, function(err) {
     test.equals(err, 'bang');
     test.equals(fti.callCount, 1);
     test.done();

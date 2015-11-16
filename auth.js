@@ -1,11 +1,13 @@
 var http = require('http'),
     _ = require('underscore'),
-    db = require('./db-nano');
+    db = require('./db');
 
-var permissions = {
+var permissionsMap = {
   can_export_messages: ['national_admin', 'district_admin', 'analytics'],
   can_export_audit: ['national_admin'],
   can_export_feedback: ['national_admin'],
+  can_execute_schedules: [],
+  can_export_server_logs: ['national_admin'],
   can_export_contacts: ['national_admin', 'district_admin'],
   can_view_analytics: ['national_admin', 'district_admin', 'analytics'],
   can_view_data_records: [
@@ -84,15 +86,25 @@ var isDbAdmin = function(userCtx) {
 };
 
 var hasPermission = function(userCtx, permission) {
+  if (!permissionsMap[permission]) {
+    return false;
+  }
+  return _.some(permissionsMap[permission], function(role) {
+    return _.contains(userCtx.roles, role);
+  });
+};
+
+var hasAllPermissions = function(userCtx, permissions) {
   if (isDbAdmin(userCtx)) {
     return true;
   }
-  if (!permission || !permissions[permission] || !userCtx || !userCtx.roles) {
+  if (!permissions || !userCtx || !userCtx.roles) {
     return false;
   }
-  return _.some(permissions[permission], function(role) {
-    return _.contains(userCtx.roles, role);
-  });
+  if (!_.isArray(permissions)) {
+    permissions = [ permissions ];
+  }
+  return _.every(permissions, _.partial(hasPermission, userCtx));
 };
 
 var checkDistrict = function(requested, permitted, callback) {
@@ -126,7 +138,7 @@ var getUserCtx = function(req, callback) {
 
 module.exports = {
 
-  check: function(req, permission, districtId, callback) {
+  check: function(req, permissions, districtId, callback) {
     getUserCtx(req, function(err, userCtx) {
       if (err) {
         return callback({ code: 401, message: err });
@@ -134,7 +146,7 @@ module.exports = {
       if (isDbAdmin(userCtx)) {
         return callback(null, { user: userCtx.name });
       }
-      if (!hasPermission(userCtx, permission)) {
+      if (!hasAllPermissions(userCtx, permissions)) {
         return callback({ code: 403, message: 'Insufficient privileges' });
       }
       var url = '/_users/org.couchdb.user:' + userCtx.name;
@@ -167,8 +179,6 @@ module.exports = {
     }).on('error', function(e) {
       callback(e.message);
     }).end();
-  },
-
-  getUserCtx: getUserCtx
+  }
 
 };

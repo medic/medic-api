@@ -1,6 +1,6 @@
-var controller = require('../controllers/total-births'),
-    db = require('../db'),
-    config = require('../config'),
+var controller = require('../../controllers/total-births'),
+    db = require('../../db'),
+    config = require('../../config'),
     sinon = require('sinon');
 
 exports.setUp = function(callback) {
@@ -21,7 +21,7 @@ exports.tearDown = function (callback) {
 exports['get returns errors'] = function(test) {
   test.expect(2);
   var fti = sinon.stub(db, 'fti').callsArgWith(2, 'bang');
-  controller.get({}, function(err, results) {
+  controller.get({}, function(err) {
     test.equals(err, 'bang');
     test.equals(fti.callCount, 1);
     test.done();
@@ -43,6 +43,8 @@ exports['get returns zero if no registrations and no delivery reports'] = functi
 exports['get returns total births count'] = function(test) {
   test.expect(2);
   var fti = sinon.stub(db, 'fti');
+
+  // get registrations
   fti.onFirstCall().callsArgWith(2, null, {
     rows: [
       { doc: { patient_id: 1 } },
@@ -50,11 +52,13 @@ exports['get returns total births count'] = function(test) {
       { doc: { patient_id: 6 } }
     ]
   });
+
+  // get deliveries
   fti.onSecondCall().callsArgWith(2, null, {
     rows: [
-      { doc: { patient_id: 6 } },
-      { doc: { patient_id: 2 } },
-      { doc: { patient_id: 3 } }
+      { doc: { fields: { patient_id: 6 } } },
+      { doc: { fields: { patient_id: 2 } } },
+      { doc: { fields: { patient_id: 3 } } }
     ]
   });
   controller.get({}, function(err, results) {

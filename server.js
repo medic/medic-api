@@ -3,13 +3,18 @@ var _ = require('underscore'),
     express = require('express'),
     morgan = require('morgan'),
     http = require('http'),
+    moment = require('moment'),
     app = express(),
     db = require('./db'),
     config = require('./config'),
     auth = require('./auth'),
+    scheduler = require('./scheduler'),
     AuditProxy = require('./audit-proxy'),
-    target = 'http://' + db.client.host + ':' + db.client.port,
+    migrations = require('./migrations'),
+    translations = require('./translations'),
+    target = 'http://' + db.settings.host + ':' + db.settings.port,
     proxy = require('http-proxy').createProxyServer({ target: target }),
+    proxyForAuditing = require('http-proxy').createProxyServer({ target: target }),
     activePregnancies = require('./controllers/active-pregnancies'),
     upcomingAppointments = require('./controllers/upcoming-appointments'),
     missedAppointments = require('./controllers/missed-appointments'),
@@ -22,10 +27,15 @@ var _ = require('underscore'),
     visitsDuring = require('./controllers/visits-during'),
     monthlyRegistrations = require('./controllers/monthly-registrations'),
     monthlyDeliveries = require('./controllers/monthly-deliveries'),
+    exportData = require('./controllers/export-data'),
     messages = require('./controllers/messages'),
     records = require('./controllers/records'),
     forms = require('./controllers/forms'),
-    createDomain = require('domain').create;
+    fti = require('./controllers/fti'),
+    createDomain = require('domain').create,
+    staticResources = /\/(templates|static)\//,
+    appcacheManifest = /manifest\.appcache/,
+    pathPrefix = '/' + db.settings.db;
 
 http.globalAgent.maxSockets = 100;
 
@@ -43,7 +53,8 @@ app.use(function(req, res, next) {
   var domain = createDomain();
   domain.on('error', function(err) {
     console.error('UNCAUGHT EXCEPTION!');
-    serverError(err, res);
+    console.error(err);
+    serverError(err, req, res);
     domain.dispose();
     process.exit(1);
   });
@@ -51,35 +62,34 @@ app.use(function(req, res, next) {
   next();
 });
 
+app.all(pathPrefix + '/_design/' + db.settings.ddoc + '/_rewrite/update_settings/*', function(req, res) {
+  // don't audit the app settings
+  proxy.web(req, res);
+});
+app.all(pathPrefix + '/_revs_diff', function(req, res) {
+  // don't audit the _revs_diff
+  proxy.web(req, res);
+});
+app.all(pathPrefix + '/_local/*', function(req, res) {
+  // don't audit the _local docs
+  proxy.web(req, res);
+});
+
 var audit = function(req, res) {
   var ap = new AuditProxy();
   ap.on('error', function(e) {
-    serverError(e, res);
+    serverError(e, req, res);
   });
   ap.on('not-authorized', function() {
     notLoggedIn(res);
   });
-  ap.audit(proxy, req, res);
+  ap.audit(proxyForAuditing, req, res);
 };
 
-var auditPath = db.name + '*';
+var auditPath = pathPrefix + '*';
 app.put(auditPath, audit);
 app.post(auditPath, audit);
 app.delete(auditPath, audit);
-
-var handleApiCall = function(req, res, controller) {
-  auth.getUserCtx(req, function(err) {
-    if (err) {
-      return notLoggedIn(res);
-    }
-    controller.get({ district: req.query.district }, function(err, obj) {
-      if (err) {
-        return serverError(err, res);
-      }
-      res.json(obj);
-    });
-  });
-};
 
 app.get('/setup/poll', function(req, res) {
   var p = require('./package.json');
@@ -110,7 +120,7 @@ app.get('/api/info', function(req, res) {
 app.get('/api/auth/:path', function(req, res) {
   auth.checkUrl(req, function(err, output) {
     if (err) {
-      return serverError(err, res);
+      return serverError(err, req, res);
     }
     if (output.status >= 400 && output.status < 500) {
       res.status(403).send('Forbidden');
@@ -120,63 +130,162 @@ app.get('/api/auth/:path', function(req, res) {
   });
 });
 
+var handleAnalyticsCall = function(req, res, controller) {
+  auth.check(req, 'can_view_analytics', req.query.district, function(err, ctx) {
+    if (err) {
+      return error(err, req, res);
+    }
+    controller.get({ district: ctx.district }, function(err, obj) {
+      if (err) {
+        return serverError(err, req, res);
+      }
+      res.json(obj);
+    });
+  });
+};
+
 app.get('/api/active-pregnancies', function(req, res) {
-  handleApiCall(req, res, activePregnancies);
+  handleAnalyticsCall(req, res, activePregnancies);
 });
 
 app.get('/api/upcoming-appointments', function(req, res) {
-  handleApiCall(req, res, upcomingAppointments);
+  handleAnalyticsCall(req, res, upcomingAppointments);
 });
 
 app.get('/api/missed-appointments', function(req, res) {
-  handleApiCall(req, res, missedAppointments);
+  handleAnalyticsCall(req, res, missedAppointments);
 });
 
 app.get('/api/upcoming-due-dates', function(req, res) {
-  handleApiCall(req, res, upcomingDueDates);
+  handleAnalyticsCall(req, res, upcomingDueDates);
 });
 
 app.get('/api/high-risk', function(req, res) {
-  handleApiCall(req, res, highRisk);
+  handleAnalyticsCall(req, res, highRisk);
 });
 
 app.get('/api/total-births', function(req, res) {
-  handleApiCall(req, res, totalBirths);
+  handleAnalyticsCall(req, res, totalBirths);
 });
 
 app.get('/api/missing-delivery-reports', function(req, res) {
-  handleApiCall(req, res, missingDeliveryReports);
+  handleAnalyticsCall(req, res, missingDeliveryReports);
 });
 
 app.get('/api/delivery-location', function(req, res) {
-  handleApiCall(req, res, deliveryLocation);
+  handleAnalyticsCall(req, res, deliveryLocation);
 });
 
 app.get('/api/visits-completed', function(req, res) {
-  handleApiCall(req, res, visitsCompleted);
+  handleAnalyticsCall(req, res, visitsCompleted);
 });
 
 app.get('/api/visits-during', function(req, res) {
-  handleApiCall(req, res, visitsDuring);
+  handleAnalyticsCall(req, res, visitsDuring);
 });
 
 app.get('/api/monthly-registrations', function(req, res) {
-  handleApiCall(req, res, monthlyRegistrations);
+  handleAnalyticsCall(req, res, monthlyRegistrations);
 });
 
 app.get('/api/monthly-deliveries', function(req, res) {
-  handleApiCall(req, res, monthlyDeliveries);
+  handleAnalyticsCall(req, res, monthlyDeliveries);
+});
+
+var formats = {
+  xml: {
+    extension: 'xml',
+    contentType: 'application/vnd.ms-excel'
+  },
+  csv: {
+    extension: 'csv',
+    contentType: 'text/csv'
+  },
+  json: {
+    extension: 'json',
+    contentType: 'application/json'
+  },
+  zip: {
+    extension: 'zip',
+    contentType: 'application/zip'
+  }
+};
+
+var getExportPermission = function(type) {
+  if (type === 'audit') {
+    return 'can_export_audit';
+  }
+  if (type === 'feedback') {
+    return 'can_export_feedback';
+  }
+  if (type === 'contacts') {
+    return 'can_export_contacts';
+  }
+  if (type === 'logs') {
+    return 'can_export_server_logs';
+  }
+  return 'can_export_messages';
+};
+
+app.get(db.getPath() + '/export/:type/:form?', function(req, res) {
+  var url = '/api/v1/export/' + req.params.type;
+  if (req.params.form) {
+    url += '/' + req.params.form;
+  }
+  res.redirect(301, url);
+});
+
+app.get('/api/v1/export/:type/:form?', function(req, res) {
+  auth.check(req, getExportPermission(req.params.type), req.query.district, function(err, ctx) {
+    if (err) {
+      return error(err, req, res);
+    }
+    req.query.type = req.params.type;
+    req.query.form = req.params.form || req.query.form;
+    req.query.district = ctx.district;
+    exportData.get(req.query, function(err, obj) {
+      if (err) {
+        return serverError(err, req, res);
+      }
+      var format = formats[req.query.format] || formats.csv;
+      var filename = req.params.type + '-' +
+                     moment().format('YYYYMMDDHHmm') +
+                     '.' + format.extension;
+      res
+        .set('Content-Type', format.contentType)
+        .set('Content-Disposition', 'attachment; filename=' + filename)
+        .send(obj);
+    });
+  });
+});
+
+app.get('/api/v1/fti/:view', function(req, res) {
+  auth.check(req, 'can_view_data_records', null, function(err) {
+    if (err) {
+      return error(err, req, res);
+    }
+    auth.check(req, 'can_view_unallocated_data_records', null, function(err, ctx) {
+      var queryOptions = _.pick(req.query, 'q', 'schema', 'sort', 'skip', 'limit', 'include_docs');
+      queryOptions.allocatedOnly = !!err;
+      fti.get(req.params.view, queryOptions, ctx && ctx.district, function(err, result) {
+        if (err) {
+          return serverError(err.message, req, res);
+        }
+        res.json(result);
+      });
+    });
+  });
 });
 
 app.get('/api/v1/messages', function(req, res) {
-  auth.check(req, 'can_view_data_records', null, function(err, ctx) {
+  auth.check(req, ['can_view_data_records','can_view_unallocated_data_records'], null, function(err) {
     if (err) {
-      return serverError(err, res);
+      return error(err, req, res);
     }
     var opts = _.pick(req.query, 'limit', 'start', 'descending', 'state');
     messages.getMessages(opts, ctx && ctx.district, function(err, result) {
       if (err) {
-        return serverError(err, res);
+        return error(err, req, res);
       }
       res.json(result);
     });
@@ -184,13 +293,13 @@ app.get('/api/v1/messages', function(req, res) {
 });
 
 app.get('/api/v1/messages/:id', function(req, res) {
-  auth.check(req, 'can_view_data_records', null, function(err, ctx) {
+  auth.check(req, ['can_view_data_records','can_view_unallocated_data_records'], null, function(err) {
     if (err) {
-      return serverError(err, res);
+      return error(err, req, res);
     }
     messages.getMessage(req.params.id, ctx && ctx.district, function(err, result) {
       if (err) {
-        return serverError(err, res);
+        return error(err, req, res);
       }
       res.json(result);
     });
@@ -200,11 +309,11 @@ app.get('/api/v1/messages/:id', function(req, res) {
 app.put('/api/v1/messages/state/:id', jsonParser, function(req, res) {
   auth.check(req, 'can_update_messages', null, function(err, ctx) {
     if (err) {
-      return serverError(err, res);
+      return error(err, req, res);
     }
     messages.updateMessage(req.params.id, req.body, ctx && ctx.district, function(err, result) {
       if (err) {
-        return serverError(err, res);
+        return error(err, req, res);
       }
       res.json(result);
     });
@@ -212,24 +321,29 @@ app.put('/api/v1/messages/state/:id', jsonParser, function(req, res) {
 });
 
 app.post('/api/v1/records', [jsonParser, formParser], function(req, res) {
-  auth.check(req, 'can_create_records', null, function(err, ctx) {
-    var create;
+  auth.check(req, 'can_create_records', null, function(err) {
     if (err) {
-      console.log('checkURL err', err);
-      return serverError(err, res);
+      return error(err, req, res);
     }
-    if (req.headers['content-type'].toLowerCase() === 'application/x-www-form-urlencoded') {
-      create = records.createRecord;
-    } else if (req.headers['content-type'].toLowerCase() === 'application/json') {
-      create = records.createRecordJSON;
-    } else {
-      return serverError('Content type not supported.', res);
-    }
-    create(req.body, ctx && ctx.district, function(err, result) {
+    records.create(req.body, req.is(['json','urlencoded']), function(err, result) {
       if (err) {
-        return serverError(err, res);
+        return error(err, req, res);
       }
       res.json(result);
+    });
+  });
+});
+
+app.get('/api/v1/scheduler/:name', function(req, res) {
+  auth.check(req, 'can_execute_schedules', null, function(err) {
+    if (err) {
+      return error(err, req, res);
+    }
+    scheduler.exec(req.params.name, function(err) {
+      if (err) {
+        return error(err, req, res);
+      }
+      res.json({ schedule: req.params.name, result: 'success' });
     });
   });
 });
@@ -237,7 +351,7 @@ app.post('/api/v1/records', [jsonParser, formParser], function(req, res) {
 app.get('/api/v1/forms', function(req, res) {
   forms.listForms(req.headers, function(err, body, headers) {
       if (err) {
-        return serverError(err, res);
+        return serverError(err, req, res);
       }
       if (headers) {
         res.writeHead(headers.statusCode || 200, headers);
@@ -251,11 +365,11 @@ app.get('/api/v1/forms/:form', function(req, res) {
       form = parts.slice(0, -1).join('.'),
       format = parts.slice(-1)[0];
   if (!form || !format) {
-    return serverError(new Error('Invalid form parameter.'));
+    return serverError(new Error('Invalid form parameter.'), req, res);
   }
   forms.getForm(form, format, function(err, body, headers) {
     if (err) {
-      return serverError(err, res);
+      return serverError(err, req, res);
     }
     if (headers) {
       res.writeHead(headers.statusCode || 200, headers);
@@ -264,20 +378,69 @@ app.get('/api/v1/forms/:form', function(req, res) {
   });
 });
 
+/**
+ * Set cache control on static resources. Must be hacked in to
+ * ensure we set the value first.
+ */
+proxy.on('proxyReq', function(proxyReq, req, res) {
+  if (appcacheManifest.test(req.url)) {
+    res.oldWriteHead = res.writeHead;
+    res.writeHead = function(statusCode, headers) {
+      res.setHeader('Cache-Control', 'must-revalidate');
+      res.setHeader('Content-Type', 'text/cache-manifest; charset=utf-8');
+      res.setHeader('Last-Modified', 'Tue, 28 Apr 2015 02:23:40 GMT');
+      res.setHeader('Expires', 'Tue, 28 Apr 2015 02:21:40 GMT');
+      res.oldWriteHead(statusCode, headers);
+    };
+  } else if (staticResources.test(req.url)) {
+    res.oldWriteHead = res.writeHead;
+    res.writeHead = function(statusCode, headers) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      res.oldWriteHead(statusCode, headers);
+    };
+  }
+});
+
 app.all('*', function(req, res) {
   proxy.web(req, res);
 });
 
 proxy.on('error', function(err, req, res) {
-  serverError(JSON.stringify(err), res);
+  serverError(JSON.stringify(err), req, res);
 });
 
-var serverError = function(err, res) {
-  console.error('Server error: ' + (err.stack || JSON.stringify(err)));
+proxyForAuditing.on('error', function(err, req, res) {
+  serverError(JSON.stringify(err), req, res);
+});
+
+var error = function(err, req, res) {
+  if (typeof err === 'string') {
+    return serverError(err, req, res);
+  } else if (err.code === 500) {
+    return serverError(err.message, req, res);
+  } else if (err.code === 401) {
+    return notLoggedIn(res);
+  }
+  res.writeHead(err.code || 500, {
+    'Content-Type': 'text/plain'
+  });
+  res.end(err.message);
+};
+
+var serverError = function(err, req, res) {
+  console.error('Server error: ');
+  console.log('  url: ' + req && req.url);
+  console.log('  detail: ' + (err.stack || JSON.stringify(err)));
   res.writeHead(500, {
     'Content-Type': 'text/plain'
   });
-  res.end('Server error');
+  if (err.message) {
+    res.end('Server error: ' + err.message);
+  } else if (typeof err === 'string') {
+    res.end('Server error: ' + err);
+  } else {
+    res.end('Server error');
+  }
 };
 
 var notLoggedIn = function(res) {
@@ -288,19 +451,36 @@ var notLoggedIn = function(res) {
   res.end('Not logged in');
 };
 
-// Define error-handling middleware last.
-// http://expressjs.com/guide/error-handling.html
-app.use(function(err, req, res, next) {
-  serverError(err.stack, res);
+migrations.run(function(err) {
+  if (err) {
+    console.error(err);
+  } else {
+    console.log('Database migrations completed successfully');
+  }
 });
 
 config.load(function(err) {
   if (err) {
-    console.error('error loading config', err);
+    console.error('Error loading config', err);
     process.exit(1);
   }
+  translations.run(function(err) {
+    if (err) {
+      return console.error('Error merging translations', err);
+    }
+    console.log('Translations merged successfully');
+  });
   config.listen();
+  scheduler.init();
   app.listen(5988, function() {
     console.log('Medic API listening on port 5988');
   });
 });
+
+// Define error-handling middleware last.
+// http://expressjs.com/guide/error-handling.html
+// jshint ignore:start
+app.use(function(err, req, res, next) {
+  serverError(err, req, res);
+});
+// jshint ignore:end

@@ -1,7 +1,7 @@
-var controller = require('../controllers/monthly-deliveries'),
-    db = require('../db'),
+var controller = require('../../controllers/monthly-deliveries'),
+    db = require('../../db'),
+    config = require('../../config'),
     moment = require('moment'),
-    config = require('../config'),
     sinon = require('sinon');
 
 var clock;
@@ -26,7 +26,7 @@ exports.tearDown = function(callback) {
 exports['get returns errors'] = function(test) {
   test.expect(2);
   var fti = sinon.stub(db, 'fti').callsArgWith(2, 'bang');
-  controller.get({}, function(err, results) {
+  controller.get({}, function(err) {
     test.equals(err, 'bang');
     test.equals(fti.callCount, 1);
     test.done();
@@ -48,7 +48,7 @@ exports['get returns errors from second fti'] = function(test) {
     ]
   });
   fti.onSecondCall().callsArgWith(2, 'boom');
-  controller.get({}, function(err, results) {
+  controller.get({}, function(err) {
     test.equals(err, 'boom');
     test.equals(fti.callCount, 2);
     test.done();
@@ -58,6 +58,8 @@ exports['get returns errors from second fti'] = function(test) {
 exports['get returns monthly deliveries count'] = function(test) {
   test.expect(2);
   var fti = sinon.stub(db, 'fti');
+
+  // registrations
   fti.onFirstCall().callsArgWith(2, null, {
     rows: [
       {
@@ -71,30 +73,32 @@ exports['get returns monthly deliveries count'] = function(test) {
         doc: {
           patient_id: 2,
           form: 'R',
-          reported_date: moment().subtract(80, 'weeks')
+          reported_date: moment().subtract(78, 'weeks')
         }
       },
       {
         doc: {
           patient_id: 3,
           form: 'P',
-          lmp_date: moment().subtract(70, 'weeks')
+          lmp_date: moment().subtract(68, 'weeks')
         }
       }
     ]
   });
+
+  // delivery reports
   fti.onSecondCall().callsArgWith(2, null, {
     rows: [
       {
         doc: {
-          patient_id: 1,
-          reported_date: moment().subtract(30, 'weeks')
+          reported_date: moment().subtract(30, 'weeks'),
+          fields: { patient_id: 1 }
         }
       },
       {
         doc: {
-          patient_id: 4,
-          reported_date: moment().subtract(16, 'weeks')
+          reported_date: moment().subtract(16, 'weeks'),
+          fields: { patient_id: 4 }
         }
       }
     ]
