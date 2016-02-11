@@ -2,8 +2,8 @@ var sinon = require('sinon'),
     testUtils = require('../utils'),
     auth = require('../../auth'),
     config = require('../../config'),
-    serverUtils = require('../../server-utils'),
-    changes = require('../../handlers/changes');
+    serverUtils = require('../../server-utils')('testPathPrefix'),
+    changes = require('../../handlers/changes')('testPathPrefix');
 
 exports.tearDown = function (callback) {
   testUtils.restore(

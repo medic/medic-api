@@ -40,7 +40,7 @@ var _ = require('underscore'),
     appcacheManifest = /manifest\.appcache/,
     pathPrefix = '/' + db.settings.db + '/',
     appPrefix = pathPrefix + '_design/' + db.settings.ddoc + '/_rewrite/',
-    serverUtils = require('./server-utils');
+    serverUtils = require('./server-utils')(pathPrefix);
 
 http.globalAgent.maxSockets = 100;
 
@@ -393,7 +393,7 @@ app.get('/api/v1/forms/:form', function(req, res) {
 });
 
 // DB replication endpoint
-app.get('/medic/_changes', _.partial(require('./handlers/changes'), proxy));
+app.get('/medic/_changes', _.partial(require('./handlers/changes')(pathPrefix), proxy));
 
 var writeHeaders = function(req, res, headers, redirect) {
   res.oldWriteHead = res.writeHead;
