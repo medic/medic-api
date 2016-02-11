@@ -1,25 +1,16 @@
-module.exports = {
-  notLoggedIn: function(req, res, showPrompt) {
-    if (showPrompt) {
-      // api access - basic auth allowed
-      res.writeHead(401, {
-        'Content-Type': 'text/plain',
-        'WWW-Authenticate': 'Basic realm="Medic Mobile Web Services"'
-      });
-      res.end('not logged in');
-    } else {
-      // web access - redirect to login page
-      res.redirect(301, pathPrefix + 'login?redirect=' + encodeURIComponent(req.url));
-    }
+var UTILS = {
+  notLoggedIn: function(req, res, pathPrefix) {
+    // web access - redirect to login page
+    res.redirect(301, pathPrefix + 'login?redirect=' + encodeURIComponent(req.url));
   },
 
-  error: function(err, req, res, showPrompt) {
+  error: function(err, req, res, pathPrefix) {
     if (typeof err === 'string') {
-      return module.exports.serverError(err, req, res);
+      return UTILS.serverError(err, req, res);
     } else if (err.code === 500) {
-      return module.exports.serverError(err.message, req, res);
+      return UTILS.serverError(err.message, req, res);
     } else if (err.code === 401) {
-      return module.exports.notLoggedIn(req, res, showPrompt);
+      return UTILS.notLoggedIn(req, res, pathPrefix);
     }
     res.writeHead(err.code || 500, {
       'Content-Type': 'text/plain'
@@ -42,3 +33,5 @@ module.exports = {
     }
   }
 };
+
+module.exports = UTILS;
