@@ -160,6 +160,7 @@ var exportTypes = {
         ], options);
       }
       var model = {
+        db: db.auditDb,
         name: config.translate('Audit', options.locale),
         data: [],
         columns: options.columns
@@ -517,7 +518,8 @@ var getRecordsView = function(type, params, callback) {
     options.startkey = [9999999999999, {}];
     options.endkey = [0];
   }
-  db.medic.view('medic', type.view, options, callback);
+  var actualDb = type.view.db || db.medic;
+  actualDb.view('medic', type.view, options, callback);
 };
 
 var getRecords = function(type, params, callback) {
