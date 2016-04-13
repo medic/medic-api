@@ -34,10 +34,12 @@ var _ = require('underscore'),
     messages = require('./controllers/messages'),
     records = require('./controllers/records'),
     forms = require('./controllers/forms'),
+    users = require('./controllers/users'),
     fti = require('./controllers/fti'),
     createDomain = require('domain').create,
     staticResources = /\/(templates|static)\//,
-    appcacheManifest = /manifest\.appcache/,
+    favicon = /\/icon_\d\d.ico$/,
+    appcacheManifest = /\/manifest\.appcache$/,
     pathPrefix = '/' + db.settings.db + '/',
     appPrefix = pathPrefix + '_design/' + db.settings.ddoc + '/_rewrite/',
     serverUtils = require('./server-utils'),
@@ -50,6 +52,8 @@ var jsonParser = bodyParser.json({limit: '32mb'});
 
 // requires content-type application/x-www-form-urlencoded header
 var formParser = bodyParser.urlencoded({limit: '32mb', extended: false});
+
+app.set('strict routing', true);
 
 app.use(morgan('combined', {
   immediate: true
@@ -393,6 +397,63 @@ app.get('/api/v1/forms/:form', function(req, res) {
   });
 });
 
+app.get('/api/v1/users', function(req, res) {
+  auth.check(req, 'can_view_users', null, function(err) {
+    if (err) {
+      return serverUtils.error(err, req, res);
+    }
+    users.getList(function(err, body) {
+      if (err) {
+        return serverUtils.error(err, req, res);
+      }
+      res.json(body);
+    });
+  });
+});
+
+app.post('/api/v1/users', jsonParser, function(req, res) {
+  auth.check(req, 'can_create_users', null, function(err) {
+    if (err) {
+      return serverUtils.error(err, req, res);
+    }
+    users.createUser(req.body, function(err, body) {
+      if (err) {
+        return serverUtils.error(err, req, res);
+      }
+      res.json(body);
+    });
+  });
+});
+
+app.post('/api/v1/users/:username', jsonParser, function(req, res) {
+  auth.check(req, 'can_update_users', null, function(err) {
+    if (err) {
+      return serverUtils.error(err, req, res);
+    }
+    users.updateUser(req.params.username, req.body, function(err, body) {
+      if (err) {
+        return serverUtils.error(err, req, res);
+      }
+      res.json(body);
+    });
+  });
+});
+
+app.delete('/api/v1/users/:username', jsonParser, function(req, res) {
+  auth.check(req, 'can_delete_users', null, function(err) {
+    if (err) {
+      return serverUtils.error(err, req, res);
+    }
+    users.deleteUser(req.params.username, function(err, result) {
+      if (err) {
+        return serverUtils.error(err, req, res);
+      }
+      res.json(result);
+    });
+  });
+});
+
+
 // DB replication endpoint
 app.get('/medic/_changes', _.partial(require('./handlers/changes'), proxy));
 
@@ -423,7 +484,16 @@ var writeHeaders = function(req, res, headers, redirect) {
  * ensure we set the value first.
  */
 proxy.on('proxyReq', function(proxyReq, req, res) {
-  if (appcacheManifest.test(req.url)) {
+  if (favicon.test(req.url)) {
+    // Cache for a week.  Normally we don't interferse with couch headers, but
+    // due to Chrome (including Android WebView) aggressively requesting
+    // favicons on every page change and window.history update
+    // (https://github.com/medic/medic-webapp/issues/1913 ), we have to stage an
+    // intervention: 
+    writeHeaders(req, res, [
+      [ 'Cache-Control', 'public, max-age=604800' ],
+    ]);
+  } else if (appcacheManifest.test(req.url)) {
     // requesting the appcache manifest
     writeHeaders(req, res, [
       [ 'Cache-Control', 'must-revalidate' ],
@@ -438,6 +508,13 @@ proxy.on('proxyReq', function(proxyReq, req, res) {
     // everything else
     writeHeaders(req, res);
   }
+});
+
+/**
+ * Redirect to add the trailing slash without which mysterious bugs occur...
+ */
+app.get(pathPrefix + '_design/' + db.settings.ddoc + '/_rewrite', function(req, res) {
+  res.redirect(appPrefix);
 });
 
 app.all('*', function(req, res) {

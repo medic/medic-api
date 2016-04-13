@@ -15,7 +15,7 @@ var error = function(migration, err) {
 };
 
 var getMeta = function(callback) {
-  db.medic.view('medic', 'meta', { include_docs: true }, function(err, meta) {
+  db.medic.view('medic', 'doc_by_type', { include_docs: true, key: [ 'meta' ] }, function(err, meta) {
     if (err) {
       return callback(err);
     }
@@ -94,9 +94,13 @@ module.exports = {
       if (err) {
         return callback(err);
       }
-      callback(null, files.map(function(file) {
-        return require(path.join(migrationsDir, file));
-      }));
+      callback(null, files.filter(function(file) {
+          return file.substr(-3) === '.js';
+        })
+        .map(function(file) {
+          return require(path.join(migrationsDir, file));
+        })
+      );
     });
   }
 };

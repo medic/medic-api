@@ -6,10 +6,38 @@ Respond with HTTP 200 status on successful requests.
 
 # Table of contents
 
-  * [Forms](#forms)
-  * [Records](#records)
-  * [Messages](#messages)
-  * [Contacts](#contacts)
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Forms](#forms)
+  - [GET /api/v1/forms](#get-apiv1forms)
+  - [GET /api/v1/forms/{{id}}.{{format}}](#get-apiv1formsidformat)
+- [Records](#records)
+  - [POST /api/v1/records](#post-apiv1records)
+  - [GET /api/v1/export/forms/{formcode}](#get-apiv1exportformsformcode)
+- [Messages](#messages)
+  - [GET /api/v1/export/messages](#get-apiv1exportmessages)
+  - [GET /api/v1/messages](#get-apiv1messages)
+  - [GET /api/v1/messages/{{id}}](#get-apiv1messagesid)
+  - [PUT /api/v1/messages/state/{{id}}](#put-apiv1messagesstateid)
+  - [Todo](#todo)
+  - [Backwards Compatibility](#backwards-compatibility)
+- [Audit Log](#audit-log)
+  - [GET /api/v1/export/audit](#get-apiv1exportaudit)
+- [User Feedback](#user-feedback)
+  - [GET /api/v1/export/feedback](#get-apiv1exportfeedback)
+- [Contacts](#contacts)
+  - [GET /api/v1/export/contacts](#get-apiv1exportcontacts)
+- [Users](#users)
+  - [Supported Properties](#supported-properties)
+  - [GET /api/v1/users](#get-apiv1users)
+  - [POST /api/v1/users](#post-apiv1users)
+  - [POST /api/v1/users/{{username}}](#post-apiv1usersusername)
+  - [DELETE /api/v1/users/{{username}}](#delete-apiv1usersusername)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 # Forms
 
@@ -48,7 +76,7 @@ X-OpenRosa-Version: 1.0
 ```
 
 ```
-HTTP/1.1 200
+HTTP/1.1 200 OK
 Content-Type: text/xml; charset=utf-8
 X-OpenRosa-Version: 1.0
 
@@ -159,7 +187,7 @@ message=1!YYYZ!Sam#23#2015#ANC&from=+5511943348031&reported_date=1352399720000
 ```
 
 ```
-HTTP/1.1 200 
+HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 
 {
@@ -167,6 +195,7 @@ Content-Type: application/json; charset=utf-8
   "id": "364c796a843fbe0a73476f9153012733"
 }
 ```
+
 Creating new record with JSON.
 
 ```
@@ -186,7 +215,7 @@ Content-Type: application/json
 ```
 
 ```
-HTTP/1.1 200 
+HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 
 {
@@ -295,7 +324,7 @@ GET /api/v1/messages?state=pending
 ```
 
 ```
-HTTP/1.1 200 
+HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 
 [
@@ -333,7 +362,7 @@ GET /api/v1/messages?state=sent&descending
 ```
 
 ```
-HTTP/1.1 200 
+HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 
 [
@@ -389,7 +418,7 @@ GET /api/v1/messages/364c796a843fbe0a73476f9153012733
 ```
 
 ```
-HTTP/1.1 200 
+HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 
 {
@@ -443,7 +472,7 @@ Content-Type: application/json
 ```
 
 ```
-HTTP/1.1 200 
+HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 
 {
@@ -462,7 +491,7 @@ Content-Type: application/json; charset=utf-8
 ```
 
 ```
-HTTP/1.1 500 
+HTTP/1.1 500 Internal Server Error
 Content-Type: application/json; charset=utf-8
 
 {
@@ -515,12 +544,12 @@ Export a file containing the user feedback.
 
 Returns a JSON array of contacts. 
 
-### Query Parameters
+### Query Parameters (required)
 
 | Variable           | Description
 | ------------------ | ------------- 
-| format (required)  | The desired format of the file. Only 'json' is supported. 
-| query (required)   | The query parameters in lucene query generator format.
+| format             | The desired format of the file. Only 'json' is supported. 
+| query              | The query parameters in lucene query generator format.
 
 ### Examples
 
@@ -548,4 +577,235 @@ Content-Type: application/json; charset=utf-8
     "type":"district_hospital"
   }
 ]
+```
+
+# Users
+
+All user related requests are limited to users with admin privileges by default.
+
+## Supported Properties
+
+Use JSON in the request body to specify user details.  Any properties submitted
+that are not on the list below will be ignored.  Any properties not included
+will be undefined.
+
+#### Required
+
+| Key | Description       
+| -------- | -----------------
+| username | String identifier used for authentication.
+| password | Password string used for authentication.  Only allowed to be set, not retrieved.
+| place    | Place identifier string (UUID) or object this user resides in.
+| contact  | A contact object based on the form configured in the app.
+| contact.parent | The parent place of the contact.  The contact must reside in or be equal to the place the user resides in.
+
+#### Optional
+
+| Key | Description       
+| -------- | -----------------
+| type     | User permission type, default: district-manager
+| fullname | Full name
+| email    | Email address 
+| phone    | Phone number
+| language | Language preference. e.g. "sw" for Swahili
+| known    | Boolean to define if the user has logged in before.  Used mainly to determine whether or not to start a tour on first login.
+
+#### Permission Types
+
+| Key | Description   
+| -------- | -----------------    
+| national-manager | Full permissions on all doc types.
+| district-manager | Full permissions on all doc types in a set of places.
+| facility-manager | Full permissions on all doc types in a given place.
+| data-entry | Only allowed to create new records from a given place.
+| analytics | Read only 
+| gateway   | Only allowed to create new records.
+
+
+## GET /api/v1/users
+
+Returns a list of users and their profile data in JSON format.  
+
+#### Permissions 
+
+`can_view_users`
+
+### Examples
+
+Get list of users:
+
+```
+GET /api/v1/users
+```
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+
+[
+  {
+    "id": "org.couchdb.user:admin",
+    "rev": "10-6486428924d11781c107ea74de6b63b6",
+    "type": "admin",
+    "username": "admin",
+    "language": {
+      "code": "en"
+    }
+  },  
+  {
+    "id": "org.couchdb.user:demo",
+    "rev": "14-8758c8493edcc6dac50366173fc3e24a",
+    "type": "district-manager",
+    "fullname": "Example User",
+    "username": "demo",
+    "language": {
+      "code": "en"
+    },
+    "place": {
+      "_id": "eeb17d6d-5dde-c2c0-62c4a1a0ca17d38b",
+      "type": "district_hospital",
+      "name": "Sample District",
+      "parent": {},
+      "contact": {
+        "_id": "eeb17d6d-5dde-c2c0-62c4a1a0ca17fd17",
+        "type": "person",
+        "name": "Paul",
+        "phone": "+2868917046"
+      }
+    },
+    "contact": {
+      "_id": "eeb17d6d-5dde-c2c0-62c4a1a0ca17fd17",
+      "type": "person",
+      "name": "Paul",
+      "phone": "+2868917046"
+    }
+  }
+]
+```
+
+## POST /api/v1/users
+
+Create a new user with a place and a contact.
+
+### Permissions
+
+`can_create_users`  
+
+
+### Examples
+
+Create a new user that can authenticate with a username of "mary" and password
+of "secret" that can submit reports and view or modify records associated to
+their place.  The place is created behind the scenes and assigned to the
+contact.
+
+```
+POST /api/v1/users
+Content-Type: application/json
+
+{
+  "password": "secret",
+  "username": "mary",
+  "type": "district-manager",
+  "place": {
+    "name": "Mary's Area",
+    "type": "health_center",
+    "parent": "d14e1c3d557761320b13a77e7806e8f8"
+  },
+  "contact": {
+    "name": "Mary Anyango",
+    "phone": "+2868917046",
+  }
+}
+```
+
+```
+HTTP/1.1 200 
+Content-Type: application/json
+
+{
+  "contact": {
+    "id": "65416b8ceb53ff88ac1847654501aeb3",
+    "rev": "1-0b74d219ae13137c1a06f03a0a52e187"
+  },
+  "user-settings": {
+    "id": "org.couchdb.user:mary",
+    "rev": "1-6ac1d36b775143835f4af53f9895d7ae"
+  },
+  "user": {
+    "id": "org.couchdb.user:mary",
+    "rev": "1-c3b82a0b47cfe68edd9284c89bebbae4"
+  }
+}
+
+```
+
+## POST /api/v1/users/{{username}}
+
+Allows you to change property values on a user account. Properties listed above
+are supported except for `contact.parent`.  Creating or modifing contact
+records is not supported.
+
+### Permissions
+
+`can_update_users`  
+
+### URL Parameters
+
+| Variable | Description      
+| -------- | ----------------- 
+| username | String identifier used for authentication.
+
+
+### Examples
+
+
+```
+POST /api/v1/users/mary
+Content-Type: application/json
+
+{
+  "password": "secret",
+  "place": "eeb17d6d-5dde-c2c0-62c4a1a0ca17e342"
+}
+```
+
+```
+HTTP/1.1 200 OK
+
+{
+  "user": {
+    "id": "org.couchdb.user:mary",
+    "rev": "23-858e01fafdfa0d367d798fe5b44751ff"
+  },
+  "user-settings": {
+    "id": "org.couchdb.user:mary",
+    "rev": "17-c6d03b86d2d5d70f7270c85e67fea96d"
+  }
+}
+```
+
+## DELETE /api/v1/users/{{username}}
+
+Delete a user.  Does not affect a contact or place associated to a user.
+
+### Permissions
+
+`can_delete_users` 
+
+
+### URL Parameters
+
+| Variable | Description      
+| -------- | ----------------- 
+| username | String identifier used for authentication.
+
+### Examples
+
+```
+DELETE /api/v1/users/mary
+```
+
+```
+HTTP/1.1 200 OK
 ```
