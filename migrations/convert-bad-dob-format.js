@@ -1,10 +1,12 @@
-var async = require('async'),
-    db = require('../db'),
+var db = require('../db'),
     moment = require('moment');
 
+/* jshint ignore:start */
+// (it's more readable to use double quotes)
 var temporaryView = {
-  "map": "function(doc) { if (doc.type === 'person' && doc.date_of_birth && doc.date_of_birth.indexOf(' ') >= 0) { emit(1); }}"
+  'map': "function(doc) { if (doc.type === 'person' && doc.date_of_birth && doc.date_of_birth.indexOf(' ') >= 0) { emit(1); }}"
 };
+/* jshint ignore:end */
 
 module.exports = {
   name: 'convert-bad-dob-format',
@@ -23,12 +25,9 @@ module.exports = {
         return row.doc;
       });
 
-      for(doc of docs) {
-        var currentDob = doc.date_of_birth;
-        var convertedDob = moment(doc.date_of_birth, 'MMM Do, YYYY').format('YYYY-MM-DD');
-
-        doc.date_of_birth = convertedDob;
-      }
+      docs.forEach(function(doc) {
+        doc.date_of_birth = moment(doc.date_of_birth, 'MMM Do, YYYY').format('YYYY-MM-DD');
+      });
 
       db.medic.bulk({
         docs: docs
