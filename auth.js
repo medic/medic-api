@@ -39,7 +39,10 @@ var permissions = {
       'district_admin',
       'data_entry',
       'gateway'
-  ]
+  ],
+  can_access_gateway_api: [
+      'gateway'
+  ],
 };
 
 var get = function(url, headers, callback) {

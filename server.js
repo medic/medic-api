@@ -14,6 +14,7 @@ var _ = require('underscore'),
     upcomingAppointments = require('./controllers/upcoming-appointments'),
     missedAppointments = require('./controllers/missed-appointments'),
     upcomingDueDates = require('./controllers/upcoming-due-dates'),
+    smsGateway = require('./controllers/sms-gateway'),
     highRisk = require('./controllers/high-risk'),
     totalBirths = require('./controllers/total-births'),
     missingDeliveryReports = require('./controllers/missing-delivery-reports'),
@@ -81,6 +82,20 @@ var handleApiCall = function(req, res, controller) {
   });
 };
 
+var handleApiPost = function(req, res, controller) {
+  auth.getUserCtx(req, function(err) {
+    if (err) {
+      return notLoggedIn(res);
+    }
+    controller.post(req, function(err, obj) {
+      if (err) {
+        return serverError(err, res);
+      }
+      res.json(obj);
+    });
+  });
+};
+
 app.get('/setup/poll', function(req, res) {
   var p = require('./package.json');
   res.json({
@@ -134,6 +149,23 @@ app.get('/api/missed-appointments', function(req, res) {
 
 app.get('/api/upcoming-due-dates', function(req, res) {
   handleApiCall(req, res, upcomingDueDates);
+});
+
+app.get('/api/sms', function(req, res) {
+  auth.check(req, 'can_access_gateway_api', null, function(err, ctx) {
+    if (err) {
+      return serverError(err, res);
+    }
+    handleApiCall(req, res, smsGateway);
+  });
+});
+app.post('/api/sms', function(req, res) {
+  auth.check(req, 'can_access_gateway_api', null, function(err, ctx) {
+    if (err) {
+      return serverError(err, res);
+    }
+    handleApiPost(req, res, smsGateway);
+  });
 });
 
 app.get('/api/high-risk', function(req, res) {
