@@ -1,11 +1,22 @@
-var auth = require('../auth'),
+var _ = require('underscore'),
+    auth = require('../auth'),
     config = require('../config'),
+    fs = require('fs'),
     serverUtils = require('../server-utils');
 
 var filterIsDocByPlace = function(req) {
   var split = req.query && req.query.filter && req.query.filter.split('/');
   return split && split.length === 2 && split[1] === 'doc_by_place';
 };
+
+var whitelistFile = process.env.HOME + '/facility-whitelist.medic-api';
+var FACILITY_WHITELIST;
+try {
+  FACILITY_WHITELIST = JSON.parse(fs.readFileSync(whitelistFile, 'utf8')).whitelist;
+  console.log('FACILITY_WHITELIST', 'loaded', FACILITY_WHITELIST);
+} catch(e) {
+  console.log('FACILITY_WHITELIST', 'loading failed', e);
+}
 
 module.exports = function(proxy, req, res) {
   auth.getUserCtx(req, function(err, userCtx) {
@@ -19,6 +30,16 @@ module.exports = function(proxy, req, res) {
         if (err) {
           return serverUtils.serverError(err.message, req, res);
         }
+
+        if (FACILITY_WHITELIST) {
+          if(_.include(FACILITY_WHITELIST, facilityId)) {
+            console.log('FACILITY_WHITELIST', 'IN LIST', facilityId);
+          } else {
+            console.log('FACILITY_WHITELIST', 'NOT IN LIST', facilityId);
+            return serverUtils.error({ code:429, message: 'Rate limiting in action.' }, req, res);
+          }
+        } else console.log('FACILITY_WHITELIST', 'NO WHITELIST', facilityId);
+
         // for security reasons ensure the params haven't been tampered with
         if (filterIsDocByPlace(req)) {
           var unassigned = config.get('district_admins_access_unallocated_messages') &&
