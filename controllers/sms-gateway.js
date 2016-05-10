@@ -129,7 +129,6 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
 }
 
 function getWebappOriginatingMessages(gatewayRequest) {
-  console.log('getWebappOriginatingMessages()', gatewayRequest); // DEBUG
   return new Promise(function(resolve, reject) {
     var req = http.request(
       {
