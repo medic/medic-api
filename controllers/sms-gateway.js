@@ -31,11 +31,38 @@ function readBody(stream) {
 }
 
 function saveToDb(wtMessage) {
-  // TODO the object provided should be converted into the medic format for
-  // webapp-terminating SMS messages.  Supplied fields are:
-  //   wtMessage.id
-  //   wtMessage.from
-  //   wtMessage.content
+  var messageBody = {
+    from: wtMessage.from,
+    message: wtMessage.content,
+    message_id: wtMessage.id,
+  };
+
+  new Promise(function(resolve, reject) {
+    var req = http.request(
+      {
+        hostname: 'localhost',
+        port: 5984,
+        path: '/medic/_design/medic/_rewrite/add',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+      },
+      function(res) {
+        readBody(res)
+          .then(JSON.parse)
+          .then(function(response) {
+            console.log('saveToDb', 'completed', wtMessage);
+          })
+          .catch(reject);
+      });
+
+    req.on('error', reject);
+
+    req.write(JSON.stringify(messageBody));
+    req.end();
+  })
+  .catch(function(err) {
+    console.log('saveToDb', 'error updating message state', wtMessage, err);
+  });
 }
 
 function getWebappState(delivery) {
