@@ -73,8 +73,8 @@ function updateState(userAgent, messageId, newState) {
   new Promise(function(resolve, reject) {
     var req = http.request(
       {
-        hostname: 'localhost', // TODO should probably detect this from somewhere
-        port: 5988, // TODO should probably detect this from somewhere
+        hostname: 'localhost',
+        port: 5988,
         path: '/api/v1/messages/state/' + messageId,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
@@ -100,11 +100,33 @@ function updateState(userAgent, messageId, newState) {
 
 function getWebappOriginatingMessages() {
   return new Promise(function(resolve, reject) {
-    // TODO fetch a sensible number of webapp-originating messages from couch,
-    // and convert them into the expected `medic-gateway` format:
-    //     { id:?, to:?, content:? }
+    var req = http.request(
+      {
+        hostname: 'localhost',
+        port: 5988,
+        path: '/api/v1/messages?state=pending',
+        method: 'GET',
+      },
+      function(res) {
+        readBody(res)
+          .then(JSON.parse)
+          .then(function(pendingMessages) {
+            var woMessages = { docs: [], outgoingPayload: [] };
+            _.each(pendingMessages, function(pendingMessage) {
+              docs.push(pendingMessage);
+              outgoingPayload.push({
+                id: pendingMessage.id,
+                to: pendingMessage.to,
+                content: pendingMessage.message,
+              });
+            });
+            resolve(woMessages);
+          })
+          .catch(reject);
+      });
 
-    resolve({ docs: [], outgoingPayload: [] });
+    req.on('error', reject);
+    req.end();
   });
 }
 
