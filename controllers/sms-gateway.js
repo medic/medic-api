@@ -110,9 +110,7 @@ function getWebappOriginatingMessages() {
 
 function updateWebappOriginatingMessageStatuses(woMessages) {
   _.forEach(woMessages.docs, function(doc) {
-    // TODO now that the messages have been successfully forwarded to
-    // `medic-gateway`, update the status of each of the messages to prevent
-    // them from being forwarded next time API is polled.
+    updateState('medic-api:updateWebappOriginatingMessageStatuses()', doc.id, 'scheduled');
   });
 }
 
