@@ -26,7 +26,7 @@ function readBody(stream) {
   });
 }
 
-function saveToDb(wtMessage) {
+function saveToDb(gatewayRequest, wtMessage) {
   var messageBody = {
     from: wtMessage.from,
     message: wtMessage.content,
@@ -40,7 +40,10 @@ function saveToDb(wtMessage) {
         port: 5984,
         path: '/medic/_design/medic/_rewrite/add',
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': gatewayRequest.getHeader('authorization'),
+        },
       },
       function(res) {
         readBody(res)
@@ -80,12 +83,13 @@ function updateStateForDelivery(gatewayRequest, delivery) {
   }
 
   return updateState(
+      gatewayRequest,
       gatewayRequest.getHeader('user-agent'),
       delivery.id,
       newState);
 }
 
-function updateState(userAgent, messageId, newState) {
+function updateState(gatewayRequest, userAgent, messageId, newState) {
   var updateBody = {
     state: newState,
     details: {
@@ -100,7 +104,10 @@ function updateState(userAgent, messageId, newState) {
         port: 5988,
         path: '/api/v1/messages/state/' + messageId,
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': gatewayRequest.getHeader('authorization'),
+        },
       },
       function(res) {
         readBody(res)
@@ -121,7 +128,8 @@ function updateState(userAgent, messageId, newState) {
   });
 }
 
-function getWebappOriginatingMessages() {
+function getWebappOriginatingMessages(gatewayRequest) {
+  console.log('getWebappOriginatingMessages()', gatewayRequest); // DEBUG
   return new Promise(function(resolve, reject) {
     var req = http.request(
       {
@@ -129,6 +137,9 @@ function getWebappOriginatingMessages() {
         port: 5988,
         path: '/api/v1/messages?state=pending',
         method: 'GET',
+        headers: {
+          'Authorization': gatewayRequest.getHeader('authorization'),
+        },
       },
       function(res) {
         readBody(res)
@@ -153,9 +164,9 @@ function getWebappOriginatingMessages() {
   });
 }
 
-function updateWebappOriginatingMessageStatuses(woMessages) {
+function updateWebappOriginatingMessageStatuses(gatewayRequest, woMessages) {
   _.forEach(woMessages.docs, function(doc) {
-    updateState('medic-api:updateWebappOriginatingMessageStatuses()', doc.id, 'scheduled');
+    updateState(gatewayRequest, 'medic-api:updateWebappOriginatingMessageStatuses()', doc.id, 'scheduled');
   });
 }
 
@@ -173,7 +184,7 @@ module.exports = {
             if(request.messages) {
               _.forEach(request.messages, function(webappTerminatingMessage) {
                 console.log('Inserting wt message into DB.', webappTerminatingMessage); // DEBUG
-                saveToDb(webappTerminatingMessage);
+                saveToDb(req, webappTerminatingMessage);
               });
             } else console.log('No WT messages.'); // DEBUG
           })
@@ -190,10 +201,12 @@ module.exports = {
           })
           .catch(console.log.bind(console.log));
       })
-      .then(getWebappOriginatingMessages)
+      .then(function() {
+        return getWebappOriginatingMessages(req);
+      })
       .then(function(woMessages) {
         callback(null, { messages: woMessages.outgoingPayload });
-        updateWebappOriginatingMessageStatuses(woMessages);
+        updateWebappOriginatingMessageStatuses(req, woMessages);
       })
       .catch(callback);
   },
