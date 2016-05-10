@@ -42,7 +42,7 @@ function saveToDb(gatewayRequest, wtMessage) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': gatewayRequest.getHeader('authorization'),
+          'Authorization': gatewayRequest.headers.authorization,
         },
       },
       function(res) {
@@ -84,7 +84,7 @@ function updateStateForDelivery(gatewayRequest, delivery) {
 
   return updateState(
       gatewayRequest,
-      gatewayRequest.getHeader('user-agent'),
+      gatewayRequest.headers['user-agent'],
       delivery.id,
       newState);
 }
@@ -106,7 +106,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': gatewayRequest.getHeader('authorization'),
+          'Authorization': gatewayRequest.headers.authorization,
         },
       },
       function(res) {
@@ -138,7 +138,7 @@ function getWebappOriginatingMessages(gatewayRequest) {
         path: '/api/v1/messages?state=pending',
         method: 'GET',
         headers: {
-          'Authorization': gatewayRequest.getHeader('authorization'),
+          'Authorization': gatewayRequest.headers.authorization,
         },
       },
       function(res) {
