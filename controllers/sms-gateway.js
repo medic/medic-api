@@ -11,21 +11,22 @@ is working as expected and has tests, these are probably best removed.
 
  */
 
-var utils = require('./utils'),
+var _ = require('underscore'),
     db = require('../db'),
-    _ = require('underscore');
+    http = require('http'),
+    utils = require('./utils');
 require('lie/polyfill');
 
-function readBody(req) {
+function readBody(stream) {
   var body = '';
   return new Promise(function(resolve, reject) {
-    req.on('data', function(data) {
+    stream.on('data', function(data) {
       body += data.toString();
     });
-    req.on('end', function() {
+    stream.on('end', function() {
       resolve(body);
     });
-    req.on('error', reject);
+    stream.on('error', reject);
   });
 }
 
@@ -37,12 +38,64 @@ function saveToDb(wtMessage) {
   //   wtMessage.content
 }
 
-function updateStatus(doc, statusUpdate) {
-  // TODO
-  // 1. look up the message with id `statusUpdate.id`
-  // 2, set it's status to `statusUpdate.status`.  N.B. This value may need to
-  //    be translated to be in line with the statuses already in use.
-  // 3. save the updated doc to couch
+function getWebappState(delivery) {
+  switch(delivery.status) {
+    case 'SENT':
+      return 'sent';
+    case 'DELIVERED':
+      return 'delivered';
+    case 'REJECTED':
+    case 'FAILED':
+      return 'failed';
+  }
+}
+
+function updateStateForDelivery(gatewayRequest, delivery) {
+  var newState = getWebappState(delivery);
+  if (!newState) {
+    return Promise.reject(new Error('Could not work out new state for delivery: ' + JSON.stringify(delivery)));
+  }
+
+  return updateState(
+      gatewayRequest.getHeader('user-agent'),
+      delivery.id,
+      newState);
+}
+
+function updateState(userAgent, messageId, newState) {
+  var updateBody = {
+    state: newState,
+    details: {
+      useragent: userAgent,
+    },
+  };
+
+  new Promise(function(resolve, reject) {
+    var req = http.request(
+      {
+        hostname: 'localhost', // TODO should probably detect this from somewhere
+        port: 5988, // TODO should probably detect this from somewhere
+        path: '/api/v1/messages/state/' + messageId,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+      },
+      function(res) {
+        readBody(res)
+          .then(JSON.parse)
+          .then(function(response) {
+            console.log('updateState', 'update completed', userAgent, messageId, newState);
+          })
+          .catch(reject);
+      });
+
+    req.on('error', reject);
+
+    req.write(JSON.stringify(updateBody));
+    req.end();
+  })
+  .catch(function(err) {
+    console.log('updateState', 'error updating message state', userAgent, messageId, newState, err);
+  });
 }
 
 function getWebappOriginatingMessages() {
@@ -87,14 +140,8 @@ module.exports = {
         Promise.resolve()
           .then(function() {
             if(request.deliveries) {
-              _.forEach(request.deliveries, function(statusUpdate) {
-                console.log('Updating message status in DB.', statusUpdate); // DEBUG
-                db.request('/' + statusUpdate.id, function(err, doc) {
-                  if (err) {
-                    return console.log('controllers/sms-gateway', 'Error processing delivery status update.', e, statusUpdate);
-                  }
-                  updateStatus(doc, statusUpdate);
-                });
+              _.forEach(request.deliveries, function(delivery) {
+                updateStateForDelivery(req, delivery);
               });
             } else console.log('No deliveries.'); // DEBUG
           })
