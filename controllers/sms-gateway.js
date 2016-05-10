@@ -2,10 +2,6 @@
 
 TODO
 
-I don't understand the existing data structure for messages in couch, so the
-functions which should be querying and updating couch docs have not been
-implemented yet.
-
 There are some log messages followed by the comment DEBUG.  Once this controller
 is working as expected and has tests, these are probably best removed.
 
