@@ -105,11 +105,14 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
   };
 
   new Promise(function(resolve, reject) {
+    var path = '/api/v1/messages/state/' + messageId;
+    console.log('updateState', path, newState);
+
     var req = http.request(
       {
         hostname: 'localhost',
         port: 5988,
-        path: '/api/v1/messages/state/' + messageId,
+        path: path,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
