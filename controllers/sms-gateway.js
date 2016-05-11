@@ -116,7 +116,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
         hostname: 'localhost',
         port: 5988,
         path: path,
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': gatewayRequest.headers.authorization,
