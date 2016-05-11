@@ -109,7 +109,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
 
   new Promise(function(resolve, reject) {
     var path = '/api/v1/messages/state/' + messageId;
-    console.log('updateState', path, newState);
+    console.log('updateState()', path, '->', newState, updateBody);
 
     var req = http.request(
       {
