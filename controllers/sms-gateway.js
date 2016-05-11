@@ -27,10 +27,13 @@ function readBody(stream) {
 }
 
 function readResBody(res) {
-  if (res.statusCode >= 400) {
-    throw new Error('Bad status received: ' + res.statusCode);
-  }
-  return readBody(res);
+  return Promise.resolve()
+    .then(function() {
+      if (res.statusCode >= 400) {
+        throw new Error('Bad status received: ' + res.statusCode);
+      }
+      return readBody(res);
+    });
 }
 
 function saveToDb(gatewayRequest, wtMessage) {
