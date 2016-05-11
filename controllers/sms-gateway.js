@@ -26,6 +26,13 @@ function readBody(stream) {
   });
 }
 
+function readResBody(res) {
+  if (res.statusCode >= 400) {
+    throw new Error('Bad status received: ' + res.statusCode);
+  }
+  return readBody(res);
+}
+
 function saveToDb(gatewayRequest, wtMessage) {
   var messageBody = {
     from: wtMessage.from,
@@ -46,7 +53,7 @@ function saveToDb(gatewayRequest, wtMessage) {
         },
       },
       function(res) {
-        readBody(res)
+        readResBody(res)
           .then(JSON.parse)
           .then(function(response) {
             console.log('saveToDb', 'completed', wtMessage);
@@ -110,7 +117,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
         },
       },
       function(res) {
-        readBody(res)
+        readResBody(res)
           .then(JSON.parse)
           .then(function(response) {
             console.log('updateState', 'update completed', userAgent, messageId, newState, response);
@@ -141,7 +148,7 @@ function getWebappOriginatingMessages(gatewayRequest) {
         },
       },
       function(res) {
-        readBody(res)
+        readResBody(res)
           .then(JSON.parse)
           .then(function(pendingMessages) {
             var woMessages = { docs: [], outgoingPayload: [] };
