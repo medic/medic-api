@@ -146,8 +146,8 @@ function getWebappOriginatingMessages(gatewayRequest) {
           .then(function(pendingMessages) {
             var woMessages = { docs: [], outgoingPayload: [] };
             _.each(pendingMessages, function(pendingMessage) {
-              docs.push(pendingMessage);
-              outgoingPayload.push({
+              woMessages.docs.push(pendingMessage);
+              woMessages.outgoingPayload.push({
                 id: pendingMessage.id,
                 to: pendingMessage.to,
                 content: pendingMessage.message,
