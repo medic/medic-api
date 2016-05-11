@@ -113,7 +113,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
         readBody(res)
           .then(JSON.parse)
           .then(function(response) {
-            console.log('updateState', 'update completed', userAgent, messageId, newState);
+            console.log('updateState', 'update completed', userAgent, messageId, newState, response);
           })
           .catch(reject);
       });
