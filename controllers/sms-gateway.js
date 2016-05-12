@@ -27,12 +27,12 @@ function readBody(stream) {
 }
 
 function readResBody(res) {
-  return Promise.resolve()
-    .then(function() {
+  return readBody(res)
+    .then(function(body) {
       if (res.statusCode >= 400) {
-        throw new Error('Bad status received: ' + res.statusCode);
+        throw new Error('Bad status received: ' + res.statusCode + ': ' + body);
       }
-      return readBody(res);
+      return body;
     });
 }
 
@@ -70,7 +70,7 @@ function saveToDb(gatewayRequest, wtMessage) {
     req.end();
   })
   .catch(function(err) {
-    console.log('saveToDb', 'error updating message state', wtMessage, err);
+    console.log('saveToDb', 'error saving', wtMessage, err);
   });
 }
 
