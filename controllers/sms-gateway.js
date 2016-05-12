@@ -10,6 +10,7 @@ is working as expected and has tests, these are probably best removed.
 var _ = require('underscore'),
     db = require('../db'),
     http = require('http'),
+    querystring = require('querysting'),
     utils = require('./utils');
 require('lie/polyfill');
 
@@ -37,11 +38,11 @@ function readResBody(res) {
 }
 
 function saveToDb(gatewayRequest, wtMessage) {
-  var messageBody = {
+  var messageBody = querystring.stringify({
     from: wtMessage.from,
     message: wtMessage.content,
-    message_id: wtMessage.id,
-  };
+    'medic-gateway_id': wtMessage.id,
+  });
 
   new Promise(function(resolve, reject) {
     var req = http.request(
@@ -51,7 +52,8 @@ function saveToDb(gatewayRequest, wtMessage) {
         path: '/medic/_design/medic/_rewrite/add',
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Length': messageBody.length,
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': gatewayRequest.headers.authorization,
         },
       },
@@ -66,7 +68,7 @@ function saveToDb(gatewayRequest, wtMessage) {
 
     req.on('error', reject);
 
-    req.write(JSON.stringify(messageBody));
+    req.write(messageBody);
     req.end();
   })
   .catch(function(err) {
