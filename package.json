@@ -18,6 +18,7 @@
     "nano": "^6.1.2",
     "openrosa-formlist": "medic/openrosa-formlist#sax",
     "pass-stream": "0.1.x",
+    "querystring": "^0.2.0",
     "underscore": "1.4.x"
   },
   "devDependencies": {
