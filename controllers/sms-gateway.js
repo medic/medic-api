@@ -10,7 +10,7 @@ is working as expected and has tests, these are probably best removed.
 var _ = require('underscore'),
     db = require('../db'),
     http = require('http'),
-    querystring = require('querysting'),
+    querystring = require('querystring'),
     utils = require('./utils');
 require('lie/polyfill');
 
