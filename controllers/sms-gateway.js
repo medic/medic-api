@@ -44,7 +44,7 @@ function saveToDb(gatewayRequest, wtMessage) {
     'medic-gateway_id': wtMessage.id,
   });
 
-  new Promise(function(resolve, reject) {
+  new Promise(function(resolve, reject) { // TODO unresolved
     var req = http.request(
       {
         hostname: 'localhost',
@@ -109,7 +109,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
     },
   };
 
-  new Promise(function(resolve, reject) {
+  new Promise(function(resolve, reject) { // TODO unresolved
     var path = '/api/v1/messages/state/' + messageId;
     console.log('updateState()', path, '->', newState, updateBody);
 
