@@ -114,7 +114,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
     },
   };
 
-  new Promise(function(resolve, reject) { // TODO unresolved
+  new Promise(function(resolve, reject) {
     var path = '/api/v1/messages/state/' + messageId;
     console.log('updateState()', path, '->', newState, updateBody);
 
@@ -134,6 +134,7 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
           .then(JSON.parse)
           .then(function(response) {
             console.log('updateState', 'update completed', userAgent, messageId, newState, response);
+            return resolve();
           })
           .catch(reject);
       });
