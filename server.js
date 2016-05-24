@@ -152,9 +152,11 @@ app.get('/api/upcoming-due-dates', function(req, res) {
 });
 
 app.get('/api/sms', function(req, res) {
+  // TODO check permissions
   handleApiCall(req, res, smsGateway);
 });
 app.post('/api/sms', function(req, res) {
+  // TODO check permissions
   handleApiPost(req, res, smsGateway);
 });
 
