@@ -7,8 +7,9 @@
 
 TODO
 
-There are some log messages followed by the comment DEBUG.  Once this controller
+* There are some log messages followed by the comment DEBUG.  Once this controller
 is working as expected and has tests, these are probably best removed.
+* use `./messages` directly instead of calling it via HTTP
 
  */
 
