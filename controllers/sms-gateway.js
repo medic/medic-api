@@ -7,9 +7,9 @@
 
 TODO
 
+* check appropriate permissions in sms-gateway before calling methods here
 * There are some log messages followed by the comment DEBUG.  Once this controller
 is working as expected and has tests, these are probably best removed.
-* use `./messages` directly instead of calling it via HTTP
 
  */
 
@@ -17,8 +17,12 @@ var _ = require('underscore'),
     db = require('../db'),
     http = require('http'),
     querystring = require('querystring'),
-    utils = require('./utils');
+    utils = require('./utils'),
+    messageUtils = require('./messages');
+
 require('lie/polyfill');
+
+var UNUSED = null; // TODO this var is declared in various functions in the messages controller but never actually used
 
 function readBody(stream) {
   var body = '';
@@ -115,34 +119,13 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
   };
 
   new Promise(function(resolve, reject) {
-    var path = '/api/v1/messages/state/' + messageId;
-    console.log('updateState()', path, '->', newState, updateBody);
-
-    var req = http.request(
-      {
-        hostname: 'localhost',
-        port: 5988,
-        path: path,
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': gatewayRequest.headers.authorization,
-        },
-      },
-      function(res) {
-        readResBody(res)
-          .then(JSON.parse)
-          .then(function(response) {
-            console.log('updateState', 'update completed', userAgent, messageId, newState, response);
-            return resolve();
-          })
-          .catch(reject);
-      });
-
-    req.on('error', reject);
-
-    req.write(JSON.stringify(updateBody));
-    req.end();
+    messageUtils.updateMessage(messageId, updateBody, UNUSED, function(err, result) {
+      if (err) {
+        return reject(err);
+      }
+      console.log('updateState', 'update completed', userAgent, messageId, newState, result);
+      return resolve();
+    });
   })
   .catch(function(err) {
     console.log('updateState', 'error updating message state', userAgent, messageId, newState, err);
@@ -151,36 +134,22 @@ function updateState(gatewayRequest, userAgent, messageId, newState) {
 
 function getWebappOriginatingMessages(gatewayRequest) {
   return new Promise(function(resolve, reject) {
-    var req = http.request(
-      {
-        hostname: 'localhost',
-        port: 5988,
-        path: '/api/v1/messages?state=pending',
-        method: 'GET',
-        headers: {
-          'Authorization': gatewayRequest.headers.authorization,
-        },
-      },
-      function(res) {
-        readResBody(res)
-          .then(JSON.parse)
-          .then(function(pendingMessages) {
-            var woMessages = { docs: [], outgoingPayload: [] };
-            _.each(pendingMessages, function(pendingMessage) {
-              woMessages.docs.push(pendingMessage);
-              woMessages.outgoingPayload.push({
-                id: pendingMessage.id,
-                to: pendingMessage.to,
-                content: pendingMessage.message,
-              });
-            });
-            resolve(woMessages);
-          })
-          .catch(reject);
+    var opts = { state: 'pending' };
+    messageUtils.getMessages(opts, UNUSED, function(err, pendingMessages) {
+      if (err) {
+        return reject(err);
+      }
+      var woMessages = { docs: [], outgoingPayload: [] };
+      _.each(pendingMessages, function(pendingMessage) {
+        woMessages.docs.push(pendingMessage);
+        woMessages.outgoingPayload.push({
+          id: pendingMessage.id,
+          to: pendingMessage.to,
+          content: pendingMessage.message,
+        });
       });
-
-    req.on('error', reject);
-    req.end();
+      resolve(woMessages);
+    });
   });
 }
 
@@ -221,7 +190,7 @@ module.exports = {
       .then(function(woMessages) {
         callback(null, { messages: woMessages.outgoingPayload });
         _.forEach(woMessages.docs, function(doc) {
-          updateState(gatewayRequest, 'medic-api:sms-gateway controller', doc.id, 'scheduled');
+          updateState(req, 'medic-api:sms-gateway controller', doc.id, 'scheduled');
         });
       })
       .catch(callback);
