@@ -82,28 +82,27 @@ function saveToDb(gatewayRequest, wtMessage) {
   });
 }
 
-function getWebappState(delivery) {
-  switch(delivery.status) {
+function getWebappState(update) {
+  switch(update.status) {
     case 'SENT':
       return 'sent';
     case 'DELIVERED':
       return 'delivered';
-    case 'REJECTED':
     case 'FAILED':
       return 'failed';
   }
 }
 
-function updateStateForDelivery(gatewayRequest, delivery) {
-  var newState = getWebappState(delivery);
+function updateStateFor(gatewayRequest, update) {
+  var newState = getWebappState(update);
   if (!newState) {
-    return Promise.reject(new Error('Could not work out new state for delivery: ' + JSON.stringify(delivery)));
+    return Promise.reject(new Error('Could not work out new state for update: ' + JSON.stringify(update)));
   }
 
   return updateState(
       gatewayRequest,
       gatewayRequest.headers['user-agent'],
-      delivery.id,
+      update.id,
       newState);
 }
 
@@ -185,12 +184,6 @@ function getWebappOriginatingMessages(gatewayRequest) {
   });
 }
 
-function updateWebappOriginatingMessageStatuses(gatewayRequest, woMessages) {
-  _.forEach(woMessages.docs, function(doc) {
-    updateState(gatewayRequest, 'medic-api:updateWebappOriginatingMessageStatuses()', doc.id, 'scheduled');
-  });
-}
-
 module.exports = {
   get: function(options, callback) {
     callback(null, { 'medic-gateway': true });
@@ -211,14 +204,14 @@ module.exports = {
           })
           .catch(console.log.bind(console.log));
 
-        // Process delivery status updates asynchronously
+        // Process WO message status updates asynchronously
         Promise.resolve()
           .then(function() {
-            if(request.deliveries) {
-              _.forEach(request.deliveries, function(delivery) {
-                updateStateForDelivery(req, delivery);
+            if(request.updates) {
+              _.forEach(request.updates, function(update) {
+                updateStateFor(req, update);
               });
-            } else console.log('No deliveries.'); // DEBUG
+            } else console.log('No status updates.'); // DEBUG
           })
           .catch(console.log.bind(console.log));
       })
@@ -227,7 +220,9 @@ module.exports = {
       })
       .then(function(woMessages) {
         callback(null, { messages: woMessages.outgoingPayload });
-        updateWebappOriginatingMessageStatuses(req, woMessages);
+        _.forEach(woMessages.docs, function(doc) {
+          updateState(gatewayRequest, 'medic-api:sms-gateway controller', doc.id, 'scheduled');
+        });
       })
       .catch(callback);
   },
