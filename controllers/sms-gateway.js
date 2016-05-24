@@ -1,3 +1,8 @@
+/**
+ * This module implements GET and POST to support medic-gateway's API
+ * @see https://github.com/medic/medic-gateway
+ */
+
 /*
 
 TODO
