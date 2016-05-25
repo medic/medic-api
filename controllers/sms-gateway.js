@@ -54,7 +54,7 @@ function saveToDb(gatewayRequest, wtMessage) {
     'medic-gateway_id': wtMessage.id,
   });
 
-  new Promise(function(resolve, reject) { // TODO unresolved
+  new Promise(function(resolve, reject) {
     var req = http.request(
       {
         hostname: 'localhost',
@@ -72,6 +72,7 @@ function saveToDb(gatewayRequest, wtMessage) {
           .then(JSON.parse)
           .then(function(response) {
             console.log('saveToDb', 'completed', wtMessage);
+            return resolve();
           })
           .catch(reject);
       });
