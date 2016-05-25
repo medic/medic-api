@@ -22,7 +22,7 @@ var _ = require('underscore'),
 
 require('lie/polyfill');
 
-var UNUSED = null; // TODO this var is declared in various functions in the messages controller but never actually used
+var UNUSED = null; // this var is declared in various functions in the messages controller but never actually used
 
 function readBody(stream) {
   var body = '';
