@@ -152,12 +152,20 @@ app.get('/api/upcoming-due-dates', function(req, res) {
 });
 
 app.get('/api/sms', function(req, res) {
-  // TODO check permissions
-  handleApiCall(req, res, smsGateway);
+  auth.check(req, 'can_access_gateway_api', null, function(err, ctx) {
+    if (err) {
+      return serverError(err, res);
+    }
+    handleApiCall(req, res, smsGateway);
+  });
 });
 app.post('/api/sms', function(req, res) {
-  // TODO check permissions
-  handleApiPost(req, res, smsGateway);
+  auth.check(req, 'can_access_gateway_api', null, function(err, ctx) {
+    if (err) {
+      return serverError(err, res);
+    }
+    handleApiPost(req, res, smsGateway);
+  });
 });
 
 app.get('/api/high-risk', function(req, res) {

@@ -7,7 +7,6 @@
 
 TODO
 
-* check appropriate permissions in sms-gateway before calling methods here
 * There are some log messages followed by the comment DEBUG.  Once this controller
 is working as expected and has tests, these are probably best removed.
 
