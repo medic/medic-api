@@ -174,7 +174,7 @@ app.get('/api/v1/messages', function(req, res) {
       return serverError(err, res);
     }
     var opts = _.pick(req.query, 'limit', 'start', 'descending', 'state');
-    messages.getMessages(opts, ctx && ctx.district, function(err, result) {
+    messages.getMessages(opts, function(err, result) {
       if (err) {
         return serverError(err, res);
       }
@@ -188,7 +188,7 @@ app.get('/api/v1/messages/:id', function(req, res) {
     if (err) {
       return serverError(err, res);
     }
-    messages.getMessage(req.params.id, ctx && ctx.district, function(err, result) {
+    messages.getMessage(req.params.id, function(err, result) {
       if (err) {
         return serverError(err, res);
       }
@@ -202,7 +202,7 @@ app.put('/api/v1/messages/state/:id', jsonParser, function(req, res) {
     if (err) {
       return serverError(err, res);
     }
-    messages.updateMessage(req.params.id, req.body, ctx && ctx.district, function(err, result) {
+    messages.updateMessage(req.params.id, req.body, function(err, result) {
       if (err) {
         return serverError(err, res);
       }
