@@ -15,7 +15,7 @@ exports['createRecord returns formated error from string'] = function(test) {
   controller.createRecord({
     message: 'test',
     from: '+123'
-  }, null, function(err, results) {
+  }, function(err, results) {
     test.equals(err, 'icky');
     test.equals(req.callCount, 1);
     test.done();
@@ -31,7 +31,7 @@ exports['createRecordJSON returns formated error from string'] = function(test) 
       form: 'A'
     }
   };
-  controller.createRecordJSON(body, null, function(err, results) {
+  controller.createRecordJSON(body, function(err, results) {
     test.equals(err, 'icky');
     test.equals(req.callCount, 1);
     test.done();
@@ -42,7 +42,7 @@ exports['createRecordJSON returns error if missing _meta property'] = function(t
   test.expect(2);
   var req = sinon.stub(db, 'request');
   var body = { name: 'bob' };
-  controller.createRecordJSON(body, null, function(err, results) {
+  controller.createRecordJSON(body, function(err, results) {
     test.equal(err.message, 'Missing _meta property.');
     // request should never be called if validation does not 
     test.equals(req.callCount, 0);
@@ -54,7 +54,7 @@ exports['createRecordJSON does not call request if validation fails'] = function
   test.expect(1);
   var req = sinon.stub(db, 'request');
   var body = {};
-  controller.createRecordJSON(body, null, function(err, results) {
+  controller.createRecordJSON(body, function(err, results) {
     test.equals(req.callCount, 0);
     test.done();
   });
@@ -64,7 +64,7 @@ exports['createRecord does not call request if validation fails'] = function(tes
   test.expect(1);
   var req = sinon.stub(db, 'request');
   var body = {};
-  controller.createRecord(body, null, function(err, results) {
+  controller.createRecord(body, function(err, results) {
     test.equals(req.callCount, 0);
     test.done();
   });

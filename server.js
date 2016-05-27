@@ -212,7 +212,7 @@ app.put('/api/v1/messages/state/:id', jsonParser, function(req, res) {
 });
 
 app.post('/api/v1/records', [jsonParser, formParser], function(req, res) {
-  auth.check(req, 'can_create_records', null, function(err, ctx) {
+  auth.check(req, 'can_create_records', null, function(err) {
     var create;
     if (err) {
       console.log('checkURL err', err);
@@ -225,7 +225,7 @@ app.post('/api/v1/records', [jsonParser, formParser], function(req, res) {
     } else {
       return serverError('Content type not supported.', res);
     }
-    create(req.body, ctx && ctx.district, function(err, result) {
+    create(req.body, function(err, result) {
       if (err) {
         return serverError(err, res);
       }
