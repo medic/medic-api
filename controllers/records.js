@@ -20,7 +20,7 @@ module.exports = {
       content_type: 'application/x-www-form-urlencoded'
     };
     var required = ['message', 'from'],
-        optional = ['reported_date', 'locale'];
+        optional = ['reported_date', 'locale', 'gateway_ref'];
     for (var k in required) {
       if (!_exists(data[required[k]])) {
         return callback(new Error('Missing required fields: ' + required[k]));
