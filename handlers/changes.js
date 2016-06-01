@@ -51,7 +51,7 @@ var prepareResponse = function(req, res, changes, ids) {
     last_seq: req.query.since
   };
   var len = changes.results.length;
-  var limit = req.query.limit;
+  var limit = req.query.limit || len;
   for (var i = 0; i < len && result.results.length < limit; i++) {
     var change = changes.results[i];
     // update last_seq whether or not this change applies
