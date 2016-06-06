@@ -28,6 +28,10 @@ var isDbAdmin = function(userCtx) {
   return hasRole(userCtx, '_admin');
 };
 
+var isSuperAdmin = function(userCtx) {
+  return hasRole(userCtx, 'super_admin');
+};
+
 var hasPermission = function(userCtx, permission) {
   var perm = _.findWhere(config.get('permissions'), { name: permission });
   if (!perm) {
@@ -59,6 +63,9 @@ module.exports = {
 
   hasAllPermissions: function(userCtx, permissions) {
     if (isDbAdmin(userCtx)) {
+      return false;
+    }
+    if (isSuperAdmin(userCtx)) {
       return true;
     }
     if (!permissions || !userCtx || !userCtx.roles) {
@@ -98,6 +105,9 @@ module.exports = {
         return callback(err);
       }
       if (isDbAdmin(userCtx)) {
+        return callback({ code: 403, message: 'naughty naughty - DB admin should not be trying to access things directly' });
+      }
+      if (isSuperAdmin(userCtx)) {
         return callback(null, { user: userCtx.name });
       }
       if (!module.exports.hasAllPermissions(userCtx, permissions)) {

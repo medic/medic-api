@@ -77,7 +77,7 @@ exports['auth returns error when no has insufficient privilege'] = function(test
 exports['auth returns username for admin'] = function(test) {
   test.expect(4);
   var district = '123';
-  var userCtx = { userCtx: { name: 'steve', roles: [ '_admin' ] } };
+  var userCtx = { userCtx: { name: 'steve', roles: [ 'super_admin' ] } };
   sinon.stub(url, 'format').returns('http://abc.com');
   var get = sinon.stub(request, 'get').callsArgWith(1, null, null, userCtx);
   auth.check({ }, 'can_edit', district, function(err, ctx) {
