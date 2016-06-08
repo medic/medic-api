@@ -68,7 +68,7 @@ exports['post() should update statuses supplied in request'] = function(test) {
     test.equals(updateMessage.callCount, 3);
     test.equals(updateMessage.withArgs('1', { state:'sent' }).callCount, 1);
     test.equals(updateMessage.withArgs('2', { state:'delivered' }).callCount, 1);
-    test.equals(updateMessage.withArgs('3', { state:'failed' }).callCount, 1);
+    test.equals(updateMessage.withArgs('3', { state:'failed', details:{ reason:'bad' } }).callCount, 1);
     test.done();
   });
 };

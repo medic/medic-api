@@ -66,13 +66,21 @@ function updateStateFor(update) {
     return Promise.reject(new Error('Could not work out new state for update: ' + JSON.stringify(update)));
   }
 
+  if (update.status === 'FAILED' && update.reason) {
+    return updateState(update.id, newState, update.reason);
+  }
+
   return updateState(update.id, newState);
 }
 
-function updateState(messageId, newState) {
+function updateState(messageId, newState, failureReason) {
   var updateBody = {
     state: newState,
   };
+
+  if (failureReason) {
+    updateBody.details = { reason:failureReason };
+  }
 
   return new Promise(function(resolve, reject) {
     messageUtils.updateMessage(messageId, updateBody, function(err, result) {
