@@ -1,5 +1,6 @@
 var controller = require('../../controllers/places'),
     people = require('../../controllers/people'),
+    cutils = require('../../controllers/utils'),
     db = require('../../db'),
     utils = require('../utils'),
     sinon = require('sinon');
@@ -13,7 +14,8 @@ exports.tearDown = function (callback) {
     controller.getPlace,
     controller._createPlace,
     controller._validatePlace,
-    people.getOrCreatePerson
+    people.getOrCreatePerson,
+    cutils.isDateStrValid
   );
   callback();
 };
@@ -268,6 +270,34 @@ exports['createPlaces supports parents defined as uuids.'] = function(test) {
     test.deepEqual({id: 'abc123'}, val);
     test.done();
   });
+};
+
+exports['createPlaces rejects invalid reported_date.'] = function(test) {
+  var place = {
+    name: 'Test',
+    type: 'district_hospital',
+    reported_date: 'x'
+  };
+  sinon.stub(cutils, 'isDateStrValid').returns(false);
+  controller.createPlace(place, function(err) {
+    test.equal(err.code, 400);
+    test.equal(err.message, 'Reported date is invalid: x');
+    test.done();
+  });
+};
+
+exports['createPlaces sets a default reported_date.'] = function(test) {
+  var place = {
+    name: 'Test',
+    type: 'district_hospital'
+  };
+  sinon.stub(db.medic, 'insert', function(doc) {
+    // should be set to within 5 seconds of now
+    test.ok(doc.reported_date <= (new Date().valueOf()));
+    test.ok(doc.reported_date > (new Date().valueOf() - 5000));
+    test.done();
+  });
+  controller._createPlaces(place);
 };
 
 exports['updatePlace errors with empty data'] = function(test) {

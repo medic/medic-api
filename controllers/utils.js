@@ -6,6 +6,18 @@ var _ = require('underscore'),
     luceneConditionalLimit = 1000,
     noLmpDateModifier = 4;
 
+var parseDate = function(str) {
+  return moment(str, 'YYYY-MM-DDTHH:mm:ssZ', true);
+};
+
+var isDateStrValid = function(str) {
+  var formats = [
+    'YYYY-MM-DDTHH:mm:ssZ',
+    'YYYY-MM-DDTHH:mm:ss.SSSZ'
+  ];
+  return moment(str, formats, true).isValid();
+};
+
 var formatDate = function(date) {
   return date.utc().format('YYYY-MM-DD');
 };
@@ -94,8 +106,10 @@ var uniquePerPatientId = function(rows) {
 
 module.exports = {
 
-  getFormCode: getFormCode,
   fti: fti,
+  getFormCode: getFormCode,
+  parseDate: parseDate,
+  isDateStrValid: isDateStrValid,
   formatDateRange: formatDateRange,
 
   getAllRegistrations: function(options, callback) {

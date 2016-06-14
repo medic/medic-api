@@ -1,5 +1,6 @@
 var controller = require('../../controllers/people'),
     places = require('../../controllers/places'),
+    cutils = require('../../controllers/utils'),
     db = require('../../db'),
     utils = require('../utils'),
     sinon = require('sinon');
@@ -13,7 +14,8 @@ exports.tearDown = function (callback) {
     controller.getPerson,
     controller.createPerson,
     controller.validatePerson,
-    places.getOrCreatePlace
+    places.getOrCreatePlace,
+    cutils.isDateStrValid
   );
   callback();
 };
@@ -109,3 +111,29 @@ exports['createPerson returns error from db insert'] = function(test) {
   });
 };
 
+exports['createPerson rejects invalid reported_date.'] = function(test) {
+  var person = {
+    name: 'Test',
+    reported_date: 'x'
+  };
+  sinon.stub(places, 'getOrCreatePlace').callsArg(1);
+  sinon.stub(cutils, 'isDateStrValid').returns(false);
+  controller.createPerson (person, function(err) {
+    test.equal(err.code, 400);
+    test.equal(err.message, 'Reported date is invalid: x');
+    test.done();
+  });
+};
+
+exports['createPerson sets a default reported_date.'] = function(test) {
+  var person = {
+    name: 'Test'
+  };
+  sinon.stub(db.medic, 'insert', function(doc) {
+    // should be set to within 5 seconds of now
+    test.ok(doc.reported_date <= (new Date().valueOf()));
+    test.ok(doc.reported_date > (new Date().valueOf() - 5000));
+    test.done();
+  });
+  controller.createPerson(person);
+};
