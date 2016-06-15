@@ -266,7 +266,7 @@ exports['rejects when user requests undeleted docs they are not allowed to see']
       result += slice;
     },
     end: function() {
-      test.deepEqual(JSON.parse(result), { error: 'Forbidden' });
+      test.deepEqual(JSON.parse(result), { code: 403, message: 'Forbidden' });
       test.done();
     }
   };

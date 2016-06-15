@@ -6,6 +6,10 @@ var _ = require('underscore'),
     ALL_KEY = [ '_all' ], // key in the doc_by_place view for records everyone can access
     UNASSIGNED_KEY = [ '_unassigned' ]; // key in the doc_by_place view for unassigned records
 
+var error = function(code, message) {
+  return JSON.stringify({ code: code, message: message });
+};
+
 var getViewKeys = function(req, userCtx, callback) {
   auth.getFacilityId(req, userCtx, function(err, facilityId) {
     if (err) {
@@ -58,7 +62,7 @@ var prepareResponse = function(req, res, changes, verifiedIds) {
   });
   if (rejected.length) {
     console.error('User attempting to replicate these docs without permission: ', _.pluck(rejected, 'id'));
-    return res.write(JSON.stringify({ error: 'Forbidden' }));
+    return res.write(error(403, 'Forbidden'));
   }
   res.write(JSON.stringify(changes));
 };
@@ -89,6 +93,33 @@ var defibrillator = function(req, res) {
   }
 };
 
+var filterChanges = function(req, res, userCtx) {
+  getUsersDocIds(req, userCtx, function(err, viewIds) {
+    if (err) {
+      return serverUtils.error(err, req, res);
+    }
+    getRequestIds(req, function(err, requestIds) {
+      if (err) {
+        return serverUtils.error(err, req, res);
+      }
+      var ids = _.union(requestIds, viewIds);
+      res.type('json');
+      var heartbeat = defibrillator(req, res);
+      getChanges(req, ids, function(err, changes) {
+        if (heartbeat) {
+          clearInterval(heartbeat);
+        }
+        if (err) {
+          res.write(error(503, 'Error processing your changes'));
+        } else {
+          prepareResponse(req, res, changes, viewIds);
+        }
+        res.end();
+      });
+    });
+  });
+};
+
 module.exports = function(proxy, req, res) {
   auth.getUserCtx(req, function(err, userCtx) {
     if (err) {
@@ -98,30 +129,7 @@ module.exports = function(proxy, req, res) {
         (req.query.filter === '_doc_ids' && req.query.doc_ids === '["_design/medic"]')) {
       proxy.web(req, res);
     } else {
-      getUsersDocIds(req, userCtx, function(err, viewIds) {
-        if (err) {
-          return serverUtils.error(err, req, res);
-        }
-        getRequestIds(req, function(err, requestIds) {
-          if (err) {
-            return serverUtils.error(err, req, res);
-          }
-          var ids = _.union(requestIds, viewIds);
-          res.type('json');
-          var heartbeat = defibrillator(req, res);
-          getChanges(req, ids, function(err, changes) {
-            if (heartbeat) {
-              clearInterval(heartbeat);
-            }
-            if (err) {
-              res.write('Error processing your changes');
-            } else {
-              prepareResponse(req, res, changes, viewIds);
-            }
-            res.end();
-          });
-        });
-      });
+      filterChanges(req, res, userCtx);
     }
   });
 };
