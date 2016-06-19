@@ -117,8 +117,9 @@ var initFeed = function(feed, callback) {
   });
 };
 
-// return true if the user should be able to see this doc AND they can't already
-var isNewApplicableDoc = function(feed, docs) {
+// returns if it is true that for any document in the feed the user
+// should be able to see it AND they don't already
+var hasNewApplicableDoc = function(feed, docs) {
   return _.some(docs, function(doc) {
     return !_.contains(feed.validatedIds, doc.id) &&
       _.some(doc.keys, function(key) {
@@ -185,7 +186,7 @@ var updateFeeds = function(changes) {
   });
   continuousFeeds.forEach(function(feed) {
     // check if new and relevant
-    if (isNewApplicableDoc(feed, modifiedKeys)) {
+    if (hasNewApplicableDoc(feed, modifiedKeys)) {
       if (feed.changesReq) {
         feed.changesReq.abort();
       }
