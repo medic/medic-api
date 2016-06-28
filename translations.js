@@ -28,6 +28,7 @@ var createDoc = function(attachment) {
     _id: [ 'messages', attachment.code ].join('-'),
     type: DOC_TYPE,
     code: attachment.code,
+    enabled: true,
     values: attachment.values
   };
 };
