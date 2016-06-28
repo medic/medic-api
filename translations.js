@@ -62,7 +62,11 @@ var merge = function(attachments, backups, docs) {
       // language hasn't been deleted - free to update
       var updated = false;
       Object.keys(attachment.values).forEach(function(key) {
-        if (!doc.values[key] || (doc.values[key] === backup.values[key] && backup.values[key] !== attachment.values[key])) {
+        var existing = doc.values[key];
+        var backedUp = backup.values[key];
+        var attached = attachment.values[key];
+        if (typeof existing === 'undefined' ||
+            (existing === backedUp && backedUp !== attached)) {
           // new or updated translation
           doc.values[key] = attachment.values[key];
           updated = true;

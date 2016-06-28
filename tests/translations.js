@@ -195,17 +195,17 @@ exports['merges updated translations where not modified by configuration'] = fun
     _id: 'messages-en-backup',
     code: 'en',
     type: 'translations-backup',
-    values: { hello: 'Hello', bye: 'Goodbye' } }
-  } ];
+    values: { hello: 'Hello', bye: 'Goodbye' }
+  } } ];
   var docs = [ { doc: {
     _id: 'messages-en',
     code: 'en',
     type: 'translations',
-    values: { hello: 'Hello', bye: 'Goodbye CUSTOMISED' } }
-  } ];
+    values: { hello: 'Hello', bye: 'Goodbye CUSTOMISED' }
+  } } ];
   var dbGet = sinon.stub(db.medic, 'get').callsArgWith(1, null, ddoc);
   var dbAttachment = sinon.stub(db.medic.attachment, 'get').callsArgWith(2, null, 'some buffer');
-  var parse = sinon.stub(properties, 'parse').callsArgWith(1, null, { hello: 'Hello UPDATED', bye: 'Goodbye UPDATED', added: 'ADDED' });
+  var parse = sinon.stub(properties, 'parse').callsArgWith(1, null, { hello: 'Hello UPDATED', bye: 'Goodbye UPDATED', added: 'ADDED', empty: null });
   var dbView = sinon.stub(db.medic, 'view');
   dbView.onCall(0).callsArgWith(3, null, { rows: backups });
   dbView.onCall(1).callsArgWith(3, null, { rows: docs });
@@ -225,7 +225,8 @@ exports['merges updated translations where not modified by configuration'] = fun
         values: {
           hello: 'Hello UPDATED',
           bye: 'Goodbye CUSTOMISED',
-          added: 'ADDED'
+          added: 'ADDED',
+          empty: null
         }
       },
       { // updated backup doc
@@ -235,10 +236,41 @@ exports['merges updated translations where not modified by configuration'] = fun
         values: {
           hello: 'Hello UPDATED',
           bye: 'Goodbye UPDATED',
-          added: 'ADDED'
+          added: 'ADDED',
+          empty: null
         }
       }
     ] });
+    test.done();
+  });
+};
+
+exports['do not update if existing and attached translation is null'] = function(test) {
+  // this is a special case broken by checking falsey
+  test.expect(2);
+  var ddoc = { _attachments: { 'translations/messages-en.properties': {} } };
+  var backups = [ { doc: {
+    _id: 'messages-en-backup',
+    code: 'en',
+    type: 'translations-backup',
+    values: { empty: null }
+  } } ];
+  var docs = [ { doc: {
+    _id: 'messages-en',
+    code: 'en',
+    type: 'translations',
+    values: { empty: null }
+  } } ];
+  sinon.stub(db.medic, 'get').callsArgWith(1, null, ddoc);
+  sinon.stub(db.medic.attachment, 'get').callsArgWith(2, null, 'some buffer');
+  sinon.stub(properties, 'parse').callsArgWith(1, null, { empty: null });
+  var dbView = sinon.stub(db.medic, 'view');
+  dbView.onCall(0).callsArgWith(3, null, { rows: backups });
+  dbView.onCall(1).callsArgWith(3, null, { rows: docs });
+  var dbBulk = sinon.stub(db.medic, 'bulk').callsArgWith(1);
+  translations.run(function(err) {
+    test.equals(err, undefined);
+    test.equals(dbBulk.callCount, 0);
     test.done();
   });
 };
@@ -250,14 +282,14 @@ exports['creates new language'] = function(test) {
     _id: 'messages-en-backup',
     code: 'en',
     type: 'translations-backup',
-    values: { hello: 'Hello', bye: 'Goodbye' } }
-  } ];
+    values: { hello: 'Hello', bye: 'Goodbye' }
+  } } ];
   var docs = [ { doc: {
     _id: 'messages-en',
     code: 'en',
     type: 'translations',
-    values: { hello: 'Hello', bye: 'Goodbye CUSTOMISED' } }
-  } ];
+    values: { hello: 'Hello', bye: 'Goodbye CUSTOMISED' }
+  } } ];
   var dbGet = sinon.stub(db.medic, 'get').callsArgWith(1, null, ddoc);
   var dbAttachment = sinon.stub(db.medic.attachment, 'get').callsArgWith(2, null, 'some buffer');
   var parse = sinon.stub(properties, 'parse').callsArgWith(1, null, { hello: 'Hello UPDATED', bye: 'Goodbye UPDATED', added: 'ADDED' });
@@ -323,8 +355,8 @@ exports['does not recreate deleted language'] = function(test) {
     _id: 'messages-en',
     type: 'translations',
     code: 'en',
-    values: { hello: 'Hello', bye: 'Goodbye' } }
-  } ];
+    values: { hello: 'Hello', bye: 'Goodbye' }
+  } } ];
   var dbGet = sinon.stub(db.medic, 'get').callsArgWith(1, null, ddoc);
   var dbAttachment = sinon.stub(db.medic.attachment, 'get').callsArgWith(2, null, 'some buffer');
   var parse = sinon.stub(properties, 'parse').callsArgWith(1, null, { hello: 'Hello UPDATED', bye: 'Goodbye UPDATED', added: 'ADDED' });
@@ -354,7 +386,6 @@ exports['does not recreate deleted language'] = function(test) {
     test.done();
   });
 };
-
 
 exports['merges multiple translation files'] = function(test) {
   test.expect(7);
