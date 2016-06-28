@@ -277,6 +277,7 @@ exports['creates new language'] = function(test) {
         _id: 'messages-fr',
         type: 'translations',
         code: 'fr',
+        name: 'Français (French)',
         enabled: true,
         values: {
           hello: 'Hello UPDATED',

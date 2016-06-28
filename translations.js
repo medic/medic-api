@@ -7,6 +7,15 @@ var async = require('async'),
     DOC_TYPE = 'translations',
     BACKUP_TYPE = 'translations-backup';
 
+var LOCAL_NAME_MAP = {
+  en: 'English',
+  es: 'Español (Spanish)',
+  fr: 'Français (French)',
+  ne: 'नेपाली (Nepali)',
+  sw: 'Kiswahili (Swahili)',
+  hi: 'हिन्दी (Hindi)'
+};
+
 var extractLocaleCode = function(filename) {
   var parts = TRANSLATION_FILE_NAME_REGEX.exec(filename);
   if (parts && parts[1]) {
@@ -28,6 +37,7 @@ var createDoc = function(attachment) {
     _id: [ 'messages', attachment.code ].join('-'),
     type: DOC_TYPE,
     code: attachment.code,
+    name: LOCAL_NAME_MAP[attachment.code] || attachment.code,
     enabled: true,
     values: attachment.values
   };
