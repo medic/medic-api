@@ -620,6 +620,7 @@ config.load(function(err) {
     }
     console.log('Translations merged successfully');
   });
+  // TODO run migrations after translations?
   config.listen();
   scheduler.init();
   app.listen(apiPort, function() {
