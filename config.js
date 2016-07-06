@@ -1,6 +1,7 @@
 var _ = require('underscore'),
     follow = require('follow'),
     db = require('./db'),
+    ddocExtraction = require('./ddoc-extraction'),
     settings,
     translations = {};
 
@@ -126,12 +127,16 @@ module.exports = {
             process.exit(1);
           }
         });
+        ddocExtraction.run(function(err) {
+          if (err) {
+            console.error('Something went wrong trying to extract ddocs', err);
+          }
+        });
       } else if (change.id.indexOf('messages-') === 0) {
         console.log('Detected translations change - reloading');
         loadTranslations();
       }
     });
-    // TODO also update ddocs?
     feed.follow();
   }
 };
