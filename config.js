@@ -131,6 +131,7 @@ module.exports = {
         loadTranslations();
       }
     });
+    // TODO also update ddocs?
     feed.follow();
   }
 };
