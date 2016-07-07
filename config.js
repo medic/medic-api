@@ -77,7 +77,7 @@ var loadSettings = function(callback) {
 
 var loadTranslations = function() {
   var options = { key: [ 'translations' ], include_docs: true };
-  db.medic.view('medic', 'doc_by_type', options, function(err, result) {
+  db.medic.view('medic-client', 'doc_by_type', options, function(err, result) {
     if (err) {
       console.error('Error loading translations - starting up anyway', err);
       return;

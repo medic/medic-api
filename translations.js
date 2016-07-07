@@ -119,7 +119,7 @@ var getAttachments = function(callback) {
 
 var getDocs = function(type, callback) {
   var options = { key: [ type ], include_docs: true };
-  db.medic.view('medic', 'doc_by_type', options, function(err, response) {
+  db.medic.view('medic-client', 'doc_by_type', options, function(err, response) {
     if (err) {
       return callback(err);
     }
