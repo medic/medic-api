@@ -593,6 +593,8 @@ proxyForAuditing.on('error', function(err, req, res) {
   serverUtils.serverError(JSON.stringify(err), req, res);
 });
 
+// TODO ensure ddocExtraction completes before migration starts
+// otherwise requisite views may be unavailable
 ddocExtraction.run(function(err) {
   if (err) {
     console.error('Something went wrong trying to extract ddocs', err);

@@ -31,12 +31,13 @@ var bindViewKeys = function(feed, callback) {
 };
 
 var bindValidatedDocIds = function(feed, callback) {
-  db.medic.view('medic', 'doc_by_place', { keys: feed.keys }, function(err, viewResult) {
+  db.medic.view('medic-client', 'doc_by_place', { keys: feed.keys }, function(err, viewResult) {
     if (err) {
       return callback(err);
     }
     var ids = _.pluck(viewResult.rows, 'id');
     ids.push('org.couchdb.user:' + feed.userCtx.name);
+    ids.push('_design/medic-client');
     feed.validatedIds = ids;
     callback();
   });
@@ -132,7 +133,7 @@ var hasNewApplicableDoc = function(feed, docs) {
 
 // WARNING: If updating this function also update the doc_by_place view in lib/views.js
 var extractKeysFromDoc = function(doc) {
-  if (doc._id === 'resources' || doc._id === '_design/medic-client') {
+  if (doc._id === 'resources') {
     return [[ ALL_KEY ]];
   }
   var keys = [];
