@@ -496,7 +496,11 @@ exports['replicates new docs to relevant feeds'] = function(test) {
   });
 };
 
-exports['cleans up after itself'] = function(test) {
+exports['cleans up when the client connection is closed - #2476'] = function(test) {
+
+  // this can happen if the client internet drops out, the browser is closed, etc
+  // https://nodejs.org/api/http.html#http_event_close_2
+
   test.expect(2);
 
   var userCtx = { name: 'mobile' };
