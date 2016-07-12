@@ -130,6 +130,7 @@ module.exports = {
         ddocExtraction.run(function(err) {
           if (err) {
             console.error('Something went wrong trying to extract ddocs', err);
+            process.exit(1);
           }
         });
       } else if (change.id.indexOf('messages-') === 0) {
