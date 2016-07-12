@@ -2,7 +2,6 @@ var _ = require('underscore'),
     bodyParser = require('body-parser'),
     express = require('express'),
     morgan = require('morgan'),
-    http = require('http'),
     moment = require('moment'),
     path = require('path'),
     app = express(),
@@ -46,8 +45,6 @@ var _ = require('underscore'),
     appPrefix = pathPrefix + '_design/' + db.settings.ddoc + '/_rewrite/',
     serverUtils = require('./server-utils'),
     apiPort = process.env.API_PORT || 5988;
-
-http.globalAgent.maxSockets = 100;
 
 // requires content-type application/json header
 var jsonParser = bodyParser.json({limit: '32mb'});

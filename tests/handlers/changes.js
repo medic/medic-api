@@ -86,6 +86,7 @@ exports['filters the changes to relevant ones'] = function(test) {
   var userId = 'org.couchdb.user:mobile';
 
   var testReq = {
+    on: function() {},
     query: {
       since: 1,
       heartbeat: 10000,
@@ -165,7 +166,7 @@ exports['filters the changes to relevant ones'] = function(test) {
 exports['allows unallocated access when it is configured and the user has permission'] = function(test) {
   test.expect(10);
 
-  var testReq = { query: {} };
+  var testReq = { query: {}, on: function() {} };
   var userCtx = { name: 'mobile' };
   var deletedId = 'abc';
   var allowedId = 'def';
@@ -240,7 +241,8 @@ exports['rejects when user requests undeleted docs they are not allowed to see']
       heartbeat: 10000,
       feed: 'longpole',
       doc_ids: JSON.stringify([ blockedId ])
-    }
+    },
+    on: function() {}
   };
 
   sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
@@ -297,7 +299,8 @@ exports['updates the feed when the doc is updated'] = function(test) {
       heartbeat: 10000,
       feed: 'longpole',
       doc_ids: JSON.stringify([ deletedId, unchangedId ])
-    }
+    },
+    on: function() {}
   };
 
   sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
@@ -372,7 +375,7 @@ exports['updates the feed when the doc is updated'] = function(test) {
 };
 
 exports['replicates new docs to relevant feeds'] = function(test) {
-  test.expect(16);
+  test.expect(17);
 
   var userCtx1 = { name: 'jim' };
   var userCtx2 = { name: 'bob' };
@@ -387,7 +390,8 @@ exports['replicates new docs to relevant feeds'] = function(test) {
       heartbeat: 10000,
       feed: 'longpoll',
       doc_ids: JSON.stringify([ unchangedId ])
-    }
+    },
+    on: function() {}
   };
 
   sinon.stub(auth, 'getUserCtx')
@@ -491,4 +495,60 @@ exports['replicates new docs to relevant feeds'] = function(test) {
       }
     ]
   });
+};
+
+exports['cleans up when the client connection is closed - #2476'] = function(test) {
+
+  // this can happen if the client internet drops out, the browser is closed, etc
+  // https://nodejs.org/api/http.html#http_event_close_2
+
+  test.expect(2);
+
+  var userCtx = { name: 'mobile' };
+  var deletedId = 'abc';
+  var allowedId = 'def';
+  var unchangedId = 'klm';
+
+  var testReq = {
+    query: {
+      since: 1,
+      heartbeat: 10000,
+      feed: 'longpoll',
+      doc_ids: JSON.stringify([ deletedId, unchangedId ])
+    },
+    on: function(name, eventCb) {
+      test.equals(name, 'close');
+      // fire the close event handler
+      setTimeout(eventCb);
+    }
+  };
+
+  sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
+  sinon.stub(auth, 'hasAllPermissions').returns(false);
+  sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
+  sinon.stub(config, 'get').returns(false);
+
+  // change log
+  sinon.stub(db, 'request').returns({
+    abort: function() {
+      var feeds = handler._getFeeds();
+      test.equals(feeds.length, 0);
+      test.done();
+    }
+  });
+
+  // the view returns the list of ids the user is allowed to see
+  sinon.stub(db.medic, 'view').callsArgWith(3, null, {
+    rows: [
+      { id: unchangedId },
+      { id: allowedId }
+    ]
+  });
+
+  var testRes = {
+    type: function() {},
+    writeHead: function() {}
+  };
+  handler.request({}, testReq, testRes);
+
 };
