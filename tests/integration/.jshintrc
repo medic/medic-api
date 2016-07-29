@@ -1,0 +1,13 @@
+{
+    "extends" : "../../.jshintrc",
+
+    // Custom Globals
+    "globals"       : {         // additional predefined global variables
+        "beforeEach": true,
+        "afterEach" : true,
+        "beforeAll" : true,
+        "afterAll"  : true,
+        "it"        : true,
+        "describe"  : true
+    }
+}

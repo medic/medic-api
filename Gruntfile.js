@@ -6,33 +6,46 @@ module.exports = function(grunt) {
   grunt.initConfig({
     nodeunit: {
       all: [
-        'tests/**/*.js',
-        '!tests/utils.js'
+        'tests/unit/**/*.js',
+        '!tests/**/utils.js'
       ]
     },
     jshint: {
       options: {
         jshintrc: true,
         ignores: [
-          'node_modules/**'
+          'node_modules/**',
+          'medic-webapp/**'
         ]
       },
       all: [
         '**/*.js'
       ]
     },
+    mochaTest: {
+      integration: {
+        src: ['tests/integration/**/*.js'],
+      },
+    },
     env: {
-      test: {
+      unit_test: {
         options: {
           add: {
-            TEST_ENV: '1'
+            UNIT_TEST: '1'
           }
+        }
+      },
+      integration_test: {
+        options: {
+          replace: {
+            UNIT_TEST: ''
+          },
         }
       },
       dev: {
         options: {
           replace: {
-            TEST_ENV: ''
+            UNIT_TEST: ''
           }
         }
       }
@@ -49,12 +62,27 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-nodeunit');
   grunt.loadNpmTasks('grunt-env');
   grunt.loadNpmTasks('grunt-exec');
+  grunt.loadNpmTasks('grunt-mocha-test');
 
   // Default tasks
   grunt.registerTask('test', [
-    'env:test',
     'jshint',
+    'integration_test', // run before unit tests to avoid polution
+    'unit_test',
+  ]);
+
+  // Default tasks
+  grunt.registerTask('unit_test', [
+    'env:unit_test',
     'nodeunit',
+    'env:dev'
+  ]);
+
+  // Default tasks
+  grunt.registerTask('integration_test', [
+    'env:integration_test',
+    // TODO need to make sure that ddoc is up-to-date and client-ddoc is split
+    'mochaTest:integration',
     'env:dev'
   ]);
 
