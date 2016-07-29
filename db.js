@@ -87,7 +87,7 @@ if (couchUrl) {
   };
 
   module.exports.sanitizeResponse = sanitizeResponse;
-} else if (process.env.TEST_ENV) {
+} else if (process.env.UNIT_TEST) {
   // Running tests only
   module.exports = {
     fti: function() {},
@@ -132,8 +132,7 @@ if (couchUrl) {
 } else {
   console.log(
     'Please define a COUCH_URL in your environment e.g. \n' +
-    'export COUCH_URL=\'http://admin:123qwe@localhost:5984/medic\'\n\n' +
-    'If you are running tests use TEST_ENV=1 in your environment.\n'
+    'export COUCH_URL=\'http://admin:123qwe@localhost:5984/medic\'\n'
   );
   process.exit(1);
 }
