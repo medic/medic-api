@@ -13,6 +13,7 @@ function warn() {
   console.error.apply(console, args);
 }
 
+// TODO replace with read body config?
 function readBody(stream) {
   var body = '';
   return new Promise(function(resolve, reject) {
@@ -34,7 +35,7 @@ function saveToDb(gatewayRequest, wtMessage) {
   };
 
   return new Promise(function(resolve, reject) {
-    recordUtils.create(messageBody, function(err) {
+    recordUtils.createByForm(messageBody, function(err) {
       if (err) {
         return reject(err);
       }
@@ -119,6 +120,7 @@ module.exports = {
       .then(JSON.parse)
       .then(function(request) {
         // Process webapp-terminating messages asynchronously
+        // TODO these promises do nothing!
         Promise.resolve()
           .then(function() {
             if(request.messages) {
