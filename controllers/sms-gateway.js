@@ -114,7 +114,9 @@ function processUpdates(req, callback) {
 }
 
 
-// TODO this needs to be documented in the api docs
+// TODO this needs to be documented in the api docs - it is documented in
+//    medic-gateway. Need to give this some though as this is more of an
+//    adapter than a generic endpoint for anyone to use.
 module.exports = {
   get: function(callback) {
     // TODO what is this for? Is it listing supported clients? Because that
