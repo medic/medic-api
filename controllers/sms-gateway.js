@@ -3,7 +3,8 @@
  * @see https://github.com/medic/medic-gateway
  */
 
-var _ = require('underscore'),
+var async = require('async'),
+// TODO pull these out as utils rather than calling controller code...
     messageUtils = require('./messages'),
     recordUtils = require('./records');
 
@@ -13,38 +14,16 @@ function warn() {
   console.error.apply(console, args);
 }
 
-// TODO replace with read body config?
-function readBody(stream) {
-  var body = '';
-  return new Promise(function(resolve, reject) {
-    stream.on('data', function(data) {
-      body += data.toString();
-    });
-    stream.on('end', function() {
-      resolve(body);
-    });
-    stream.on('error', reject);
-  });
-}
-
-function saveToDb(gatewayRequest, wtMessage) {
-  var messageBody = {
-    from: wtMessage.from,
-    message: wtMessage.content,
-    gateway_ref: wtMessage.id,
-  };
-
-  return new Promise(function(resolve, reject) {
-    recordUtils.createByForm(messageBody, function(err) {
-      if (err) {
-        return reject(err);
-      }
-      resolve();
-    });
-  });
+function saveToDb(message, callback) {
+  recordUtils.createByForm({
+    from: message.from,
+    message: message.content,
+    gateway_ref: message.id,
+  }, callback);
 }
 
 function getWebappState(update) {
+  // TODO replace with map
   switch(update.status) {
     case 'SENT':
       return 'sent';
@@ -55,103 +34,111 @@ function getWebappState(update) {
   }
 }
 
-function updateStateFor(update) {
+function updateStateFor(update, callback) {
   var newState = getWebappState(update);
   if (!newState) {
-    return Promise.reject(new Error('Could not work out new state for update: ' + JSON.stringify(update)));
+    return callback(new Error('Could not work out new state for update: ' + JSON.stringify(update)));
   }
-
-  if (update.status === 'FAILED' && update.reason) {
-    return updateState(update.id, newState, update.reason);
-  }
-
-  return updateState(update.id, newState);
+  updateState(update.id, newState, update.reason, callback);
 }
 
-function updateState(messageId, newState, failureReason) {
+function updateState(messageId, newState, reason, callback) {
   var updateBody = {
     state: newState,
   };
-
-  if (failureReason) {
-    updateBody.details = { reason:failureReason };
+  if (reason) {
+    updateBody.details = { reason: reason };
   }
-
-  return new Promise(function(resolve, reject) {
-    messageUtils.updateMessage(messageId, updateBody, function(err) {
-      if (err) {
-        return reject(err);
-      }
-      return resolve();
-    });
-  });
+  messageUtils.updateMessage(messageId, updateBody, callback);
 }
 
-function getWebappOriginatingMessages() {
-  return new Promise(function(resolve) {
-    var opts = { state: 'pending' };
-    messageUtils.getMessages(opts, function(err, pendingMessages) {
-      var woMessages = { docs: [], outgoingPayload: [] };
-
+// TODO update to use bulk docs instead of update function??
+function markMessagesScheduled(messages, callback) {
+  async.eachSeries(
+    messages,
+    function(message, callback) {
+      updateState(message.id, 'scheduled', null, callback);
+    },
+    function(err) {
       if (err) {
         warn(err);
-        return resolve(woMessages);
       }
+      return callback();
+    }
+  );
+}
 
-      _.each(pendingMessages, function(pendingMessage) {
-        woMessages.docs.push(pendingMessage);
-        woMessages.outgoingPayload.push({
-          id: pendingMessage.id,
-          to: pendingMessage.to,
-          content: pendingMessage.message,
-        });
-      });
-      resolve(woMessages);
+function getOutgoing(callback) {
+  messageUtils.getMessages({ state: 'pending' }, function(err, pendingMessages) {
+    if (err) {
+      warn(err);
+      return callback(null, []);
+    }
+    var messages = pendingMessages.map(function(message) {
+      return {
+        id: message.id,
+        to: message.to,
+        content: message.message,
+      };
+    });
+    markMessagesScheduled(messages, function() {
+      callback(null, messages);
     });
   });
 }
 
+// Process webapp-terminating messages
+function processMessages(req, callback) {
+  if (!req.body.messages) {
+    return callback();
+  }
+  async.eachSeries(req.body.messages, saveToDb, function(err) {
+    if (err) {
+      warn(err);
+    }
+    callback();
+  });
+};
+
+// Process message status updates
+function processUpdates(req, callback) {
+  if (!req.body.updates) {
+    return callback();
+  }
+  async.eachSeries(req.body.updates, updateStateFor, function(err) {
+    if (err) {
+      warn(err);
+    }
+    callback();
+  });
+}
+
+
+// TODO this needs to be documented in the api docs
 module.exports = {
-  get: function(options, callback) {
+  get: function(callback) {
+    // TODO what is this for? Is it listing supported clients? Because that
+    // seems backwards...
     callback(null, { 'medic-gateway': true });
   },
+  // TODO why is the POST api returning messages to send?
+  // TODO the client isn't getting any status feedback if something goes wrong
   post: function(req, callback) {
-    readBody(req)
-      .then(JSON.parse)
-      .then(function(request) {
-        // Process webapp-terminating messages asynchronously
-        // TODO these promises do nothing!
-        Promise.resolve()
-          .then(function() {
-            if(request.messages) {
-              _.forEach(request.messages, function(webappTerminatingMessage) {
-                saveToDb(req, webappTerminatingMessage)
-                  .catch(warn);
-              });
-            }
-          })
-          .catch(warn);
-
-        // Process WO message status updates asynchronously
-        Promise.resolve()
-          .then(function() {
-            if(request.updates) {
-              _.forEach(request.updates, function(update) {
-                updateStateFor(update)
-                  .catch(warn);
-              });
-            }
-          })
-          .catch(warn);
-      })
-      .then(getWebappOriginatingMessages)
-      .then(function(woMessages) {
-        callback(null, { messages: woMessages.outgoingPayload });
-        _.forEach(woMessages.docs, function(doc) {
-          updateState(doc.id, 'scheduled')
-            .catch(warn);
-        });
-      })
-      .catch(callback);
+    async.series([
+      function(callback) {
+        processMessages(req, callback);
+      },
+      function(callback) {
+        processUpdates(req, callback);
+      },
+      function(callback) {
+        getOutgoing(callback);
+      }
+    ], function(err, results) {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, { messages: results[2] });
+    });
   },
 };
