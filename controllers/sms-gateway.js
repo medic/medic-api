@@ -6,7 +6,12 @@
 var async = require('async'),
 // TODO pull these out as utils rather than calling controller code...
     messageUtils = require('./messages'),
-    recordUtils = require('./records');
+    recordUtils = require('./records'),
+    STATUS_MAP = {
+      SENT: 'sent',
+      DELIVERED: 'delivered',
+      FAILED: 'failed'
+    };
 
 function warn() {
   var args = Array.prototype.slice.call(arguments, 0);
@@ -22,20 +27,8 @@ function saveToDb(message, callback) {
   }, callback);
 }
 
-function getWebappState(update) {
-  // TODO replace with map
-  switch(update.status) {
-    case 'SENT':
-      return 'sent';
-    case 'DELIVERED':
-      return 'delivered';
-    case 'FAILED':
-      return 'failed';
-  }
-}
-
 function updateStateFor(update, callback) {
-  var newState = getWebappState(update);
+  var newState = STATUS_MAP[update.status];
   if (!newState) {
     return callback(new Error('Could not work out new state for update: ' + JSON.stringify(update)));
   }
@@ -52,7 +45,6 @@ function updateState(messageId, newState, reason, callback) {
   messageUtils.updateMessage(messageId, updateBody, callback);
 }
 
-// TODO update to use bulk docs instead of update function??
 function markMessagesScheduled(messages, callback) {
   async.eachSeries(
     messages,
@@ -119,12 +111,8 @@ function processUpdates(req, callback) {
 //    adapter than a generic endpoint for anyone to use.
 module.exports = {
   get: function(callback) {
-    // TODO what is this for? Is it listing supported clients? Because that
-    // seems backwards...
     callback(null, { 'medic-gateway': true });
   },
-  // TODO why is the POST api returning messages to send?
-  // TODO the client isn't getting any status feedback if something goes wrong
   post: function(req, callback) {
     async.series([
       function(callback) {
