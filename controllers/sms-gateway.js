@@ -98,7 +98,7 @@ function processMessages(req, callback) {
     }
     callback();
   });
-};
+}
 
 // Process message status updates
 function processUpdates(req, callback) {

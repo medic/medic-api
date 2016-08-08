@@ -22,11 +22,13 @@ var request = function(opts, callback) {
 var createByForm = function(data, callback) {
   var required = ['message', 'from'],
       optional = ['reported_date', 'locale', 'gateway_ref'];
-  required.forEach(function(key) {
-    if (!exists(data[key])) {
-      return callback(new Error('Missing required field: ' + required[k]));
+  for (var k in required) {
+    if (required.hasOwnProperty(k)) {
+      if (!exists(data[required[k]])) {
+        return callback(new Error('Missing required field: ' + required[k]));
+      }
     }
-  });
+  }
   // filter out any unwanted fields
   var content = _.pick(data, required.concat(optional));
   request({
@@ -42,11 +44,13 @@ var createRecordByJSON = function(data, callback) {
   if (!exists(data._meta)) {
     return callback(new Error('Missing _meta property.'));
   }
-  required.forEach(function(key) {
-    if (!exists(data._meta[key])) {
-      return callback(new Error('Missing required field: ' + required[k]));
+  for (var k in required) {
+    if (required.hasOwnProperty(k)) {
+      if (!exists(data._meta[required[k]])) {
+        return callback(new Error('Missing required field: ' + required[k]));
+      }
     }
-  });
+  }
   // filter out any unwanted fields
   data._meta = _.pick(data._meta, required.concat(optional));
   // no need to pass the content type as nano.request defaults to json.
