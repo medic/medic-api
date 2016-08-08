@@ -4,9 +4,8 @@
  */
 
 var async = require('async'),
-// TODO pull these out as utils rather than calling controller code...
-    messageUtils = require('./messages'),
-    recordUtils = require('./records'),
+    messageUtils = require('./message-utils'),
+    recordUtils = require('./record-utils'),
     STATUS_MAP = {
       SENT: 'sent',
       DELIVERED: 'delivered',
@@ -105,10 +104,6 @@ function processUpdates(req, callback) {
   });
 }
 
-
-// TODO this needs to be documented in the api docs - it is documented in
-//    medic-gateway. Need to give this some though as this is more of an
-//    adapter than a generic endpoint for anyone to use.
 module.exports = {
   get: function(callback) {
     callback(null, { 'medic-gateway': true });

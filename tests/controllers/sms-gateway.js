@@ -1,6 +1,6 @@
 var controller = require('../../controllers/sms-gateway'),
-    messageUtils = require('../../controllers/messages'),
-    recordUtils = require('../../controllers/records'),
+    messageUtils = require('../../controllers/message-utils'),
+    recordUtils = require('../../controllers/record-utils'),
     utils = require('../utils'),
     sinon = require('sinon');
 
