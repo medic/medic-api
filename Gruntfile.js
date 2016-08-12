@@ -41,7 +41,12 @@ module.exports = function(grunt) {
       deploy: {
         cmd: 'node server.js'
       }
-    }
+    },
+    mochaTest: {
+      integration: {
+        src: ['tests/integration/**/*.js'],
+      },
+    },
   });
 
   // Load the plugins
@@ -49,16 +54,23 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-nodeunit');
   grunt.loadNpmTasks('grunt-env');
   grunt.loadNpmTasks('grunt-exec');
+  grunt.loadNpmTasks('grunt-mocha-test');
 
   // Default tasks
   grunt.registerTask('test', [
     'env:test',
     'jshint',
     'nodeunit',
+    'test_integration',
     'env:dev'
   ]);
 
   grunt.registerTask('deploy', [
     'exec:deploy'
+  ]);
+
+  // Non-default tasks
+  grunt.registerTask('test_integration', [
+    'mochaTest:integration',
   ]);
 };
