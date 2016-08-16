@@ -7,7 +7,8 @@ module.exports = function(grunt) {
     nodeunit: {
       all: [
         'tests/**/*.js',
-        '!tests/utils.js'
+        '!tests/utils.js',
+        '!tests/integration/**/*.js'
       ]
     },
     jshint: {
