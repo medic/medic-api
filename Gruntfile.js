@@ -59,11 +59,9 @@ module.exports = function(grunt) {
 
   // Default tasks
   grunt.registerTask('test', [
-    'env:test',
     'jshint',
-    'nodeunit',
+    'test_unit',
     'test_integration',
-    'env:dev'
   ]);
 
   grunt.registerTask('deploy', [
@@ -71,6 +69,12 @@ module.exports = function(grunt) {
   ]);
 
   // Non-default tasks
+  grunt.registerTask('test_unit', [
+    'env:test',
+    'nodeunit',
+    'env:dev',
+  ]);
+
   grunt.registerTask('test_integration', [
     'mochaTest:integration',
   ]);
