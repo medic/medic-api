@@ -26,14 +26,14 @@ module.exports = function(grunt) {
       test: {
         options: {
           add: {
-            TEST_ENV: '1'
+            UNIT_TEST_ENV: '1'
           }
         }
       },
       dev: {
         options: {
           replace: {
-            TEST_ENV: ''
+            UNIT_TEST_ENV: ''
           }
         }
       }
