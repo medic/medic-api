@@ -69,6 +69,12 @@ module.exports = function(grunt) {
   ]);
 
   // Non-default tasks
+  grunt.registerTask('ci', [
+    'jshint',
+    'test_unit',
+    // don't run integration tests on CI - they will run from the webapp project
+  ]);
+
   grunt.registerTask('test_unit', [
     'env:test',
     'nodeunit',
