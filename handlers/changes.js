@@ -136,23 +136,27 @@ var hasNewApplicableDoc = function(feed, docs) {
 };
 
 // WARNING: If updating this function also update the doc_by_place view in lib/views.js
-var extractKeysFromDoc = function(doc) {
-  if (doc._id === 'resources') {
-    return [[ ALL_KEY ]];
-  }
-  var keys = [];
+var extractKeysFromDoc = function(doc, emit) {
+
   var emitPlace = function(place) {
     if (!place) {
-      keys.push([ UNASSIGNED_KEY ]);
+      emit([ '_unassigned' ]);
       return;
     }
     while (place) {
       if (place._id) {
-        keys.push([ place._id ]);
+        emit([ place._id ]);
       }
       place = place.parent;
     }
+    return;
   };
+
+  if (doc._id === 'resources') {
+    emit([ '_all' ]);
+    return;
+  }
+
   switch (doc.type) {
     case 'data_record':
       var place;
@@ -169,30 +173,33 @@ var extractKeysFromDoc = function(doc) {
       }
       if (place) {
         if (place._id) {
-          keys.push([ place._id ]);
+          emit([ place._id ]);
         }
       } else {
-        keys.push([ UNASSIGNED_KEY ]);
+        emit([ '_unassigned' ]);
       }
-      break;
+      return;
     case 'form':
-      keys.push([ ALL_KEY ]);
-      break;
+      emit([ '_all' ]);
+      return;
     case 'clinic':
     case 'district_hospital':
     case 'health_center':
     case 'person':
       emitPlace(doc);
-      break;
+      return;
   }
-  return keys;
 };
 
 var updateFeeds = function(changes) {
   var modifiedKeys = changes.results.map(function(change) {
+    var docKeys = [];
+    extractKeysFromDoc(change.doc, function(key) {
+      docKeys.push(key);
+    });
     return {
       id: change.id,
-      keys: extractKeysFromDoc(change.doc)
+      keys: docKeys
     };
   });
   continuousFeeds.forEach(function(feed) {
@@ -277,6 +284,7 @@ if (process.env.TEST_ENV) {
     },
     _getFeeds: function() {
       return continuousFeeds;
-    }
+    },
+    _extractKeysFromDoc: extractKeysFromDoc
   });
 }
