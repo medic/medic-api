@@ -158,7 +158,8 @@ var hasNewApplicableDoc = function(feed, docs) {
 // WARNING: If updating this function also update the doc_by_place view in lib/views.js
 var extractKeysFromDoc = function(doc, emit) {
 
-  var emitPlace = function(place, depth) {
+  var emitPlace = function(place) {
+    var depth = 0;
     while (place) {
       if (place._id) {
         emit([ place._id ]);
@@ -192,7 +193,7 @@ var extractKeysFromDoc = function(doc, emit) {
       if (!place) {
         emit([ '_unassigned' ]);
       } else {
-        emitPlace(place, 1); // 1 because we treat your reports as your children
+        emitPlace(place);
       }
       return;
     case 'form':
@@ -202,7 +203,7 @@ var extractKeysFromDoc = function(doc, emit) {
     case 'district_hospital':
     case 'health_center':
     case 'person':
-      emitPlace(doc, 0);
+      emitPlace(doc);
       return;
   }
 };
