@@ -74,7 +74,6 @@ var bindValidatedDocIds = function(feed, callback) {
     }
     var ids = _.pluck(viewResult.rows, 'id');
     ids.push('org.couchdb.user:' + feed.userCtx.name);
-    ids.push('_design/medic-client');
     feed.validatedIds = ids;
     callback();
   });
@@ -196,7 +195,8 @@ var hasNewApplicableDoc = function(feed, changes) {
 
 // WARNING: If updating this function also update the docs_by_replication_key view in lib/views.js
 var getReplicationKey = function(doc) {
-  if (doc._id === 'resources' ||
+  if (doc._id === '_design/medic-client' ||
+      doc._id === 'resources' ||
       doc._id === 'appcache' ||
       doc.type === 'form' ||
       doc.type === 'translations') {
