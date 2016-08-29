@@ -176,7 +176,8 @@ var hasNewApplicableDoc = function(feed, changes) {
       return true;
     }
     if (CONTACT_TYPES.indexOf(change.doc.type) === -1) {
-      // not a contact type so can't be a new subject
+      // only people and places are subjects so we don't need to update
+      // the subject list for non-contact types.
       return false;
     }
     var depth = getDepth(feed.userCtx) || 100;
