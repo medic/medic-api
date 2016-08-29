@@ -3,8 +3,9 @@ var _ = require('underscore'),
     config = require('../config'),
     serverUtils = require('../server-utils'),
     db = require('../db'),
-    ALL_KEY = [ '_all' ], // key in the doc_by_place view for records everyone can access
-    UNASSIGNED_KEY = [ '_unassigned' ], // key in the doc_by_place view for unassigned records
+    ALL_KEY = '_all', // key in the doc_by_place view for records everyone can access
+    UNASSIGNED_KEY = '_unassigned', // key in the doc_by_place view for unassigned records
+    CONTACT_TYPES = ['person', 'clinic', 'health_center', 'district_hospital'],
     inited = false,
     continuousFeeds = [];
 
@@ -12,46 +13,62 @@ var error = function(code, message) {
   return JSON.stringify({ code: code, message: message });
 };
 
-var bindViewKeys = function(feed, callback) {
+var getDepth = function(userCtx) {
+  if (!userCtx.roles || !userCtx.roles.length) {
+    return null;
+  }
+  var settings = config.get('replication_depth');
+  if (!settings) {
+    return null;
+  }
+  var depth = -1;
+  userCtx.roles.forEach(function(role) {
+    // find the role with the deepest depth
+    var setting = _.findWhere(settings, { role: role });
+    if (setting && setting.depth > depth) {
+      depth = setting.depth;
+    }
+  });
+  return depth >= 0 ? depth : null;
+};
+
+var bindSubjectIds = function(feed, callback) {
   auth.getFacilityId(feed.req, feed.userCtx, function(err, facilityId) {
     if (err) {
       return callback(err);
     }
-    var keys = [ ALL_KEY ];
-    if (facilityId) {
-      if (feed.userCtx.roles && feed.userCtx.roles.length) {
-        var depth = -1;
-        var settings = config.get('replication_depth');
-        if (settings) {
-          feed.userCtx.roles.forEach(function(role) {
-            // find the role with the deepest depth
-            var setting = _.findWhere(settings, { role: role });
-            if (setting && setting.depth > depth) {
-              depth = setting.depth;
-            }
-          });
-        }
-        if (depth === -1) {
-          // no configured depth limit
-          keys.push([ facilityId ]);
-        } else {
-          for (var i = 0; i <= depth; i++) {
-            keys.push([ facilityId, i ]);
-          }
-        }
+    if (!facilityId) {
+      return callback(null, []);
+    }
+    var keys = [];
+    var depth = getDepth(feed.userCtx);
+    if (depth) {
+      for (var i = 0; i <= depth; i++) {
+        keys.push([ facilityId, i ]);
       }
+    } else {
+      // no configured depth limit
+      keys.push([ facilityId ]);
     }
-    if (config.get('district_admins_access_unallocated_messages') &&
-        auth.hasAllPermissions(feed.userCtx, 'can_view_unallocated_data_records')) {
-      keys.push(UNASSIGNED_KEY);
-    }
-    feed.keys = keys;
-    callback();
+
+    db.medic.view('medic', 'contacts_by_depth', { keys: keys }, function(err, result) {
+      if (err) {
+        return callback(err);
+      }
+      var subjectIds = _.pluck(result.rows, 'id');
+      subjectIds.push(ALL_KEY);
+      if (config.get('district_admins_access_unallocated_messages') &&
+          auth.hasAllPermissions(feed.userCtx, 'can_view_unallocated_data_records')) {
+        subjectIds.push(UNASSIGNED_KEY);
+      }
+      feed.subjectIds = subjectIds;
+      callback();
+    });
   });
 };
 
 var bindValidatedDocIds = function(feed, callback) {
-  db.medic.view('medic-client', 'doc_by_place', { keys: feed.keys }, function(err, viewResult) {
+  db.medic.view('medic', 'docs_by_replication_key', { keys: feed.subjectIds }, function(err, viewResult) {
     if (err) {
       return callback(err);
     }
@@ -129,105 +146,107 @@ var getChanges = function(feed) {
   });
 };
 
+var bindServerIds = function(feed, callback) {
+  bindSubjectIds(feed, function(err) {
+    if (err) {
+      return callback(err);
+    }
+    bindValidatedDocIds(feed, callback);
+  });
+};
+
 var initFeed = function(feed, callback) {
   bindRequestedIds(feed, function(err) {
     if (err) {
       return callback(err);
     }
-    bindViewKeys(feed, function(err) {
-      if (err) {
-        return callback(err);
-      }
-      bindValidatedDocIds(feed, callback);
-    });
+    bindServerIds(feed, callback);
   });
 };
 
 // returns if it is true that for any document in the feed the user
 // should be able to see it AND they don't already
-var hasNewApplicableDoc = function(feed, docs) {
-  return _.some(docs, function(doc) {
-    return !_.contains(feed.validatedIds, doc.id) &&
-      _.some(doc.keys, function(key) {
-        return !!_.find(feed.keys, function(feedKey) {
-          return feedKey[0] === key[0];
-        });
-      });
+var hasNewApplicableDoc = function(feed, changes) {
+  return _.some(changes, function(change) {
+    if (_.contains(feed.validatedIds, change.id)) {
+      // feed already knows about doc
+      return false;
+    }
+    if (feed.subjectIds.indexOf(change.subjectId) !== -1) {
+      // this is relevant to the feed
+      return true;
+    }
+    if (CONTACT_TYPES.indexOf(change.doc.type) === -1) {
+      // not a contact type so can't be a new subject
+      return false;
+    }
+    var depth = getDepth(feed.userCtx) || 100;
+    var parent = change.doc.parent;
+    while (depth >= 0 && parent) {
+      if (feed.subjectIds.indexOf(parent._id) !== -1) {
+        // this is relevant to the feed
+        return true;
+      }
+      depth--;
+      parent = parent.parent;
+    }
+    return false;
   });
 };
 
-// WARNING: If updating this function also update the doc_by_place view in lib/views.js
-var extractKeysFromDoc = function(doc, emit) {
-
-  var emitPlace = function(place) {
-    var depth = 0;
-    while (place) {
-      if (place._id) {
-        emit([ place._id ]);
-        emit([ place._id, depth ]);
-      }
-      depth++;
-      place = place.parent;
-    }
-  };
-
-  if (doc._id === 'resources' || doc._id === 'appcache') {
-    emit([ '_all' ]);
-    return;
+// WARNING: If updating this function also update the docs_by_replication_key view in lib/views.js
+var getReplicationKey = function(doc) {
+  if (doc._id === 'resources' ||
+      doc._id === 'appcache' ||
+      doc.type === 'form' ||
+      doc.type === 'translations') {
+    return '_all';
   }
-
   switch (doc.type) {
     case 'data_record':
-      var place;
-      if (doc.kujua_message === true) {
-        // outgoing message
-        place = doc.tasks &&
-                doc.tasks[0] &&
-                doc.tasks[0].messages &&
-                doc.tasks[0].messages[0] &&
-                doc.tasks[0].messages[0].contact;
-      } else {
-        // incoming message
-        place = doc.contact;
+      var patientId = doc.patient_id || (doc.fields && doc.fields.patient_id);
+      if (patientId) {
+        return patientId;
       }
-
-      if (!place) {
-        emit([ '_unassigned' ]);
-      } else {
-        emitPlace(place);
+      var placeId = doc.place_id || (doc.fields && doc.fields.place_id);
+      if (placeId) {
+        return placeId;
       }
-      return;
-    case 'form':
-    case 'translations':
-      emit([ '_all' ]);
-      return;
+      var contact = doc.contact || // incoming message
+        ( // outgoing message
+          doc.tasks &&
+          doc.tasks[0] &&
+          doc.tasks[0].messages &&
+          doc.tasks[0].messages[0] &&
+          doc.tasks[0].messages[0].contact
+        );
+      if (contact) {
+        return contact._id;
+      }
+      return '_unassigned';
     case 'clinic':
     case 'district_hospital':
     case 'health_center':
     case 'person':
-      emitPlace(doc);
-      return;
+      return doc._id;
   }
 };
 
 var updateFeeds = function(changes) {
-  var modifiedKeys = changes.results.map(function(change) {
-    var docKeys = [];
-    extractKeysFromDoc(change.doc, function(key) {
-      docKeys.push(key);
-    });
+  var modifiedChanges = changes.results.map(function(change) {
     return {
       id: change.id,
-      keys: docKeys
+      subjectId: getReplicationKey(change.doc),
+      doc: change.doc
     };
   });
   continuousFeeds.forEach(function(feed) {
     // check if new and relevant
-    if (hasNewApplicableDoc(feed, modifiedKeys)) {
+    if (hasNewApplicableDoc(feed, modifiedChanges)) {
       if (feed.changesReq) {
         feed.changesReq.abort();
       }
-      bindValidatedDocIds(feed, function(err) {
+      bindServerIds(feed, function(err) {
         if (err) {
           return serverUtils.error(err, feed.req, feed.res);
         }
@@ -300,7 +319,7 @@ module.exports = {
       }
     });
   },
-  _extractKeysFromDoc: extractKeysFromDoc // used for testing
+  _getReplicationKey: getReplicationKey // used for testing
 };
 
 // used for testing
