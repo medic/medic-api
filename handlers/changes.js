@@ -268,13 +268,16 @@ var getReplicationKey = function(doc) {
 
 var updateFeeds = function(changes) {
   var modifiedChanges = changes.results.map(function(change) {
-    var row = getReplicationKey(change.doc);
-    return {
+    var result = {
       id: change.id,
-      subject: row[0],
-      submitter: row[1].submitter,
       doc: change.doc
     };
+    var row = getReplicationKey(change.doc);
+    if (row && row.length) {
+      result.subject = row[0];
+      result.submitter = row[1].submitter;
+    }
+    return result;
   });
   continuousFeeds.forEach(function(feed) {
     // check if new and relevant

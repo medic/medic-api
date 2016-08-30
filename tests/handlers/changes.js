@@ -385,7 +385,6 @@ exports['does not return reports about you or your place by someone above you in
     },
     end: function() {
       result = JSON.parse(result);
-      console.log(JSON.stringify(result));
       test.equals(result.results.length, 1);
       test.equals(result.results[0].id, allowedId);
       test.done();
