@@ -79,8 +79,8 @@ var bindSubjectIds = function(feed, callback) {
  * Method to ensure users don't see reports submitted by their boss about the user
  */
 var isSensitive = function(feed, subject, submitter) {
-  if (!subject) {
-    // now sure who it's about - not sensitive
+  if (!subject || !submitter) {
+    // not sure who it's about, or who submitted it - not sensitive
     return false;
   }
   if (subject !== feed.contactId && subject !== feed.facilityId) {
