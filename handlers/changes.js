@@ -240,7 +240,8 @@ var getReplicationKey = function(doc) {
       if (doc.form) {
         // report
         subject = (doc.patient_id || (doc.fields && doc.fields.patient_id)) ||
-                  (doc.place_id || (doc.fields && doc.fields.place_id));
+                  (doc.place_id || (doc.fields && doc.fields.place_id)) ||
+                  (doc.contact && doc.contact._id);
         submitter = doc.contact && doc.contact._id;
       } else if (doc.sms_message) {
         // incoming message
