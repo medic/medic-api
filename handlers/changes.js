@@ -40,31 +40,55 @@ var bindSubjectIds = function(feed, callback) {
     if (!facilityId) {
       return callback(null, []);
     }
-    var keys = [];
-    var depth = getDepth(feed.userCtx);
-    if (depth) {
-      for (var i = 0; i <= depth; i++) {
-        keys.push([ facilityId, i ]);
-      }
-    } else {
-      // no configured depth limit
-      keys.push([ facilityId ]);
-    }
-
-    db.medic.view('medic', 'contacts_by_depth', { keys: keys }, function(err, result) {
+    feed.facilityId = facilityId;
+    auth.getContactId(feed.userCtx, function(err, contactId) {
       if (err) {
         return callback(err);
       }
-      var subjectIds = _.pluck(result.rows, 'id');
-      subjectIds.push(ALL_KEY);
-      if (config.get('district_admins_access_unallocated_messages') &&
-          auth.hasAllPermissions(feed.userCtx, 'can_view_unallocated_data_records')) {
-        subjectIds.push(UNASSIGNED_KEY);
+      feed.contactId = contactId;
+
+      var keys = [];
+      var depth = getDepth(feed.userCtx);
+      if (depth) {
+        for (var i = 0; i <= depth; i++) {
+          keys.push([ facilityId, i ]);
+        }
+      } else {
+        // no configured depth limit
+        keys.push([ facilityId ]);
       }
-      feed.subjectIds = subjectIds;
-      callback();
+
+      db.medic.view('medic', 'contacts_by_depth', { keys: keys }, function(err, result) {
+        if (err) {
+          return callback(err);
+        }
+        var subjectIds = _.pluck(result.rows, 'id');
+        subjectIds.push(ALL_KEY);
+        if (config.get('district_admins_access_unallocated_messages') &&
+            auth.hasAllPermissions(feed.userCtx, 'can_view_unallocated_data_records')) {
+          subjectIds.push(UNASSIGNED_KEY);
+        }
+        feed.subjectIds = subjectIds;
+        callback();
+      });
     });
   });
+};
+
+/**
+ * Method to ensure users don't see reports submitted by their boss about the user
+ */
+var isSensitive = function(feed, subject, submitter) {
+  if (!subject) {
+    // now sure who it's about - not sensitive
+    return false;
+  }
+  if (subject !== feed.contactId && subject !== feed.facilityId) {
+    // must be about a descendant - not sensitive
+    return false;
+  }
+  // submitted by someone the user can't see
+  return feed.subjectIds.indexOf(submitter) === -1;
 };
 
 var bindValidatedDocIds = function(feed, callback) {
@@ -72,9 +96,12 @@ var bindValidatedDocIds = function(feed, callback) {
     if (err) {
       return callback(err);
     }
-    var ids = _.pluck(viewResult.rows, 'id');
-    ids.push('org.couchdb.user:' + feed.userCtx.name);
-    feed.validatedIds = ids;
+    feed.validatedIds = viewResult.rows.reduce(function(ids, row) {
+      if (!isSensitive(feed, row.key, row.value.submitter)) {
+        ids.push(row.id);
+      }
+      return ids;
+    }, [ '_design/medic-client', 'org.couchdb.user:' + feed.userCtx.name ]);
     callback();
   });
 };
@@ -171,7 +198,11 @@ var hasNewApplicableDoc = function(feed, changes) {
       // feed already knows about doc
       return false;
     }
-    if (feed.subjectIds.indexOf(change.subjectId) !== -1) {
+    if (isSensitive(feed, change.subject, change.submitter)) {
+      // don't show sensitive information
+      return false;
+    }
+    if (feed.subjectIds.indexOf(change.subject) !== -1) {
       // this is relevant to the feed
       return true;
     }
@@ -196,48 +227,52 @@ var hasNewApplicableDoc = function(feed, changes) {
 
 // WARNING: If updating this function also update the docs_by_replication_key view in lib/views.js
 var getReplicationKey = function(doc) {
-  if (doc._id === '_design/medic-client' ||
-      doc._id === 'resources' ||
+  if (doc._id === 'resources' ||
       doc._id === 'appcache' ||
       doc.type === 'form' ||
       doc.type === 'translations') {
-    return '_all';
+    return [ '_all', {} ];
   }
   switch (doc.type) {
     case 'data_record':
-      var patientId = doc.patient_id || (doc.fields && doc.fields.patient_id);
-      if (patientId) {
-        return patientId;
+      var subject;
+      var submitter;
+      if (doc.form) {
+        // report
+        subject = (doc.patient_id || (doc.fields && doc.fields.patient_id)) ||
+                  (doc.place_id || (doc.fields && doc.fields.place_id));
+        submitter = doc.contact && doc.contact._id;
+      } else if (doc.sms_message) {
+        // incoming message
+        subject = doc.contact && doc.contact._id;
+      } else if (doc.kujua_message) {
+        // outgoing message
+        subject = doc.tasks &&
+                  doc.tasks[0] &&
+                  doc.tasks[0].messages &&
+                  doc.tasks[0].messages[0] &&
+                  doc.tasks[0].messages[0].contact &&
+                  doc.tasks[0].messages[0].contact._id;
       }
-      var placeId = doc.place_id || (doc.fields && doc.fields.place_id);
-      if (placeId) {
-        return placeId;
+      if (subject) {
+        return [ subject, { submitter: submitter } ];
       }
-      var contact = doc.contact || // incoming message
-        ( // outgoing message
-          doc.tasks &&
-          doc.tasks[0] &&
-          doc.tasks[0].messages &&
-          doc.tasks[0].messages[0] &&
-          doc.tasks[0].messages[0].contact
-        );
-      if (contact) {
-        return contact._id;
-      }
-      return '_unassigned';
+      return [ '_unassigned', {} ];
     case 'clinic':
     case 'district_hospital':
     case 'health_center':
     case 'person':
-      return doc._id;
+      return [ doc._id, {} ];
   }
 };
 
 var updateFeeds = function(changes) {
   var modifiedChanges = changes.results.map(function(change) {
+    var row = getReplicationKey(change.doc);
     return {
       id: change.id,
-      subjectId: getReplicationKey(change.doc),
+      subject: row[0],
+      submitter: row[1].submitter,
       doc: change.doc
     };
   });

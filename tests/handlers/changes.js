@@ -5,6 +5,7 @@ var sinon = require('sinon'),
     serverUtils = require('../../server-utils'),
     handler = require('../../handlers/changes'),
     db = require('../../db'),
+    DDOC_ID = '_design/medic-client',
     changes;
 
 exports.setUp = function(callback) {
@@ -17,6 +18,7 @@ exports.tearDown = function (callback) {
     auth.getUserCtx,
     auth.hasAllPermissions,
     auth.getFacilityId,
+    auth.getContactId,
     serverUtils.serverError,
     serverUtils.error,
     config.get,
@@ -76,7 +78,7 @@ exports['allows access to replicate medic settings'] = function(test) {
 };
 
 exports['filters the changes to relevant ones'] = function(test) {
-  test.expect(26);
+  test.expect(28);
 
   var userCtx = { name: 'mobile', roles: [ 'district_admin' ] };
   var deletedId = 'abc';
@@ -98,6 +100,7 @@ exports['filters the changes to relevant ones'] = function(test) {
   sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
   sinon.stub(auth, 'hasAllPermissions').returns(false);
   sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
   sinon.stub(config, 'get').returns(false);
 
   // change log
@@ -125,8 +128,8 @@ exports['filters the changes to relevant ones'] = function(test) {
   // returns the list of doc ids the user is allowed to see
   db.medic.view.onCall(1).callsArgWith(3, null, {
     rows: [
-      { id: unchangedId },
-      { id: allowedId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } },
+      { id: allowedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
 
@@ -149,7 +152,7 @@ exports['filters the changes to relevant ones'] = function(test) {
         test.equals(result.results[1].id, allowedId);
         test.equals(db.request.callCount, 1);
         test.equals(db.request.args[0][0].path, '_changes');
-        test.deepEqual(db.request.args[0][0].body.doc_ids, [ deletedId, unchangedId, allowedId, userId ]);
+        test.deepEqual(db.request.args[0][0].body.doc_ids.sort(), [ deletedId, unchangedId, userId, allowedId, DDOC_ID ].sort());
         test.equals(db.request.args[0][0].method, 'POST');
         test.equals(db.request.args[0][0].qs.since, 1);
         test.equals(db.request.args[0][0].qs.heartbeat, 10000);
@@ -157,6 +160,8 @@ exports['filters the changes to relevant ones'] = function(test) {
         test.equals(auth.getFacilityId.callCount, 1);
         test.equals(auth.getFacilityId.args[0][0], testReq);
         test.equals(auth.getFacilityId.args[0][1], userCtx);
+        test.equals(auth.getContactId.callCount, 1);
+        test.equals(auth.getContactId.args[0][0], userCtx);
         test.equals(db.medic.view.callCount, 2);
         test.equals(db.medic.view.args[0][0], 'medic');
         test.equals(db.medic.view.args[0][1], 'contacts_by_depth');
@@ -189,6 +194,7 @@ exports['allows unallocated access when it is configured and the user has permis
   hasAllPermissions.withArgs(userCtx, 'can_access_directly').returns(false);
   hasAllPermissions.withArgs(userCtx, 'can_view_unallocated_data_records').returns(true);
   sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
   sinon.stub(config, 'get').returns(true);
 
   // change log
@@ -216,8 +222,8 @@ exports['allows unallocated access when it is configured and the user has permis
   // returns the list of doc ids the user is allowed to see
   db.medic.view.onCall(1).callsArgWith(3, null, {
     rows: [
-      { id: unchangedId },
-      { id: allowedId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } },
+      { id: allowedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
 
@@ -261,6 +267,7 @@ exports['respects replication depth when it is configured and the user has permi
   var hasAllPermissions = sinon.stub(auth, 'hasAllPermissions');
   hasAllPermissions.withArgs(userCtx, 'can_access_directly').returns(false);
   sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
   var get = sinon.stub(config, 'get');
   get.onCall(0).returns([ { role: 'district_admin', depth: 1 } ]);
   get.onCall(1).returns(false);
@@ -290,8 +297,8 @@ exports['respects replication depth when it is configured and the user has permi
   // returns the list of doc ids the user is allowed to see
   db.medic.view.onCall(1).callsArgWith(3, null, {
     rows: [
-      { id: unchangedId },
-      { id: allowedId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } },
+      { id: allowedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
 
@@ -310,6 +317,77 @@ exports['respects replication depth when it is configured and the user has permi
       test.equals(db.medic.view.args[0][2].keys.length, 2);
       test.deepEqual(db.medic.view.args[0][2].keys[0], [ 'facilityId', 0 ]);
       test.deepEqual(db.medic.view.args[0][2].keys[1], [ 'facilityId', 1 ]);
+      test.done();
+    }
+  };
+  handler.request({}, testReq, testRes);
+};
+
+exports['does not return reports about you or your place by someone above you in the hierarchy'] = function(test) {
+  test.expect(2);
+
+  var testReq = { query: {}, on: function() {} };
+  var userCtx = { name: 'mobile', roles: [ 'district_admin' ] };
+  var allowedId = 'def';
+  var unpermittedId = 'klm';
+  var facilityId = 'zyx';
+  var contactId = 'wsa';
+
+  sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
+  var hasAllPermissions = sinon.stub(auth, 'hasAllPermissions');
+  hasAllPermissions.withArgs(userCtx, 'can_access_directly').returns(false);
+  sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, facilityId);
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, contactId);
+  var get = sinon.stub(config, 'get');
+  get.onCall(0).returns([ { role: 'district_admin', depth: 1 } ]);
+  get.onCall(1).returns(false);
+
+  // change log
+  sinon.stub(db, 'request').callsArgWith(1, null, {
+    results: [
+      {
+        seq: 2,
+        id: unpermittedId
+      },
+      {
+        seq: 4,
+        id: allowedId
+      }
+    ]
+  });
+
+  sinon.stub(db.medic, 'view');
+  // returns the list of subjects the user is allowed to see
+  db.medic.view.onCall(0).callsArgWith(3, null, {
+    rows: [
+      { id: facilityId }, // their place
+      { id: contactId } // their contact
+    ]
+  });
+  // returns the list of doc ids the user is allowed to see
+  db.medic.view.onCall(1).callsArgWith(3, null, {
+    rows: [
+      // submitted by your boss about your facility - don't show
+      { id: unpermittedId, key: facilityId, value: { submitter: 'yourboss' } },
+
+      // submitted by you about your facility - show
+      { id: allowedId, key: facilityId, value: { submitter: contactId } }
+    ]
+  });
+
+  var result = '';
+
+  var testRes = {
+    type: function() {},
+    writeHead: function() {},
+    write: function(slice) {
+      result += slice;
+    },
+    end: function() {
+      result = JSON.parse(result);
+      console.log(JSON.stringify(result));
+      test.equals(result.results.length, 1);
+      test.equals(result.results[0].id, allowedId);
       test.done();
     }
   };
@@ -336,6 +414,7 @@ exports['filters out undeleted docs they are not allowed to see'] = function(tes
   sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
   sinon.stub(auth, 'hasAllPermissions').returns(false);
   sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
   sinon.stub(config, 'get').returns(false);
 
   // change log
@@ -355,7 +434,7 @@ exports['filters out undeleted docs they are not allowed to see'] = function(tes
   // the view returns the list of ids the user is allowed to see
   sinon.stub(db.medic, 'view').callsArgWith(3, null, {
     rows: [
-      { id: allowedId }
+      { id: allowedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
 
@@ -400,6 +479,7 @@ exports['updates the feed when the doc is updated'] = function(test) {
   sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
   sinon.stub(auth, 'hasAllPermissions').returns(false);
   sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
   sinon.stub(config, 'get').returns(false);
 
   // change log
@@ -415,8 +495,8 @@ exports['updates the feed when the doc is updated'] = function(test) {
   // returns the list of doc ids the user is allowed to see
   db.medic.view.onCall(1).callsArgWith(3, null, {
     rows: [
-      { id: unchangedId },
-      { id: allowedId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } },
+      { id: allowedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
 
@@ -439,7 +519,7 @@ exports['updates the feed when the doc is updated'] = function(test) {
         test.equals(result.results[1].id, allowedId);
         test.equals(db.request.callCount, 1);
         test.equals(db.request.args[0][0].path, '_changes');
-        test.deepEqual(db.request.args[0][0].body.doc_ids, [ deletedId, unchangedId, allowedId, userId ]);
+        test.deepEqual(db.request.args[0][0].body.doc_ids.sort(), [ deletedId, unchangedId, userId, allowedId, DDOC_ID ].sort());
         test.equals(db.request.args[0][0].method, 'POST');
         test.equals(db.request.args[0][0].qs.since, 1);
         test.equals(db.request.args[0][0].qs.heartbeat, 10000);
@@ -499,6 +579,7 @@ exports['replicates new docs to relevant feeds'] = function(test) {
   getFacilityId.onCall(0).callsArgWith(2, null, 'a');
   getFacilityId.onCall(1).callsArgWith(2, null, 'b');
   getFacilityId.onCall(2).callsArgWith(2, null, 'b');
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
   sinon.stub(config, 'get').returns(false);
 
   // individual change logs
@@ -528,7 +609,7 @@ exports['replicates new docs to relevant feeds'] = function(test) {
   // returns the list of doc ids the first user is allowed to see
   db.medic.view.onCall(1).callsArgWith(3, null, {
     rows: [
-      { id: unchangedId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
   // returns the list of subjects the second user is allowed to see
@@ -540,7 +621,7 @@ exports['replicates new docs to relevant feeds'] = function(test) {
   // returns the list of doc ids the second user is allowed to see
   db.medic.view.onCall(3).callsArgWith(3, null, {
     rows: [
-      { id: unchangedId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
   // returns the list of subjects the second user is allowed to see
@@ -552,8 +633,8 @@ exports['replicates new docs to relevant feeds'] = function(test) {
   // returns the list of doc ids the second user is allowed to see
   db.medic.view.onCall(5).callsArgWith(3, null, {
     rows: [
-      { id: unchangedId },
-      { id: newId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } },
+      { id: newId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
 
@@ -582,9 +663,9 @@ exports['replicates new docs to relevant feeds'] = function(test) {
         test.equals(result.results[0].seq, 4);
         test.equals(result.results[0].id, newId);
         test.equals(db.request.callCount, 3); // once for each user, and then once on the change
-        test.deepEqual(db.request.args[0][0].body.doc_ids, [ unchangedId, userId1 ]);
-        test.deepEqual(db.request.args[1][0].body.doc_ids, [ unchangedId, userId2 ]);
-        test.deepEqual(db.request.args[2][0].body.doc_ids, [ unchangedId, newId, userId2 ]);
+        test.deepEqual(db.request.args[0][0].body.doc_ids.sort(), [ unchangedId, userId1, DDOC_ID ].sort());
+        test.deepEqual(db.request.args[1][0].body.doc_ids.sort(), [ unchangedId, userId2, DDOC_ID ].sort());
+        test.deepEqual(db.request.args[2][0].body.doc_ids.sort(), [ unchangedId, userId2, newId, DDOC_ID ].sort());
         test.equals(db.medic.view.callCount, 6);
         test.done();
       });
@@ -601,6 +682,7 @@ exports['replicates new docs to relevant feeds'] = function(test) {
         seq: 4,
         id: newId,
         doc: {
+          form: 'V',
           type: 'data_record',
           patient_id: subjectId
         }
@@ -638,6 +720,7 @@ exports['cleans up when the client connection is closed - #2476'] = function(tes
   sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
   sinon.stub(auth, 'hasAllPermissions').returns(false);
   sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
+  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
   sinon.stub(config, 'get').returns(false);
 
   // change log
@@ -652,8 +735,8 @@ exports['cleans up when the client connection is closed - #2476'] = function(tes
   // the view returns the list of ids the user is allowed to see
   sinon.stub(db.medic, 'view').callsArgWith(3, null, {
     rows: [
-      { id: unchangedId },
-      { id: allowedId }
+      { id: unchangedId, key: 'subjectId', value: { submitter: 'contactId' } },
+      { id: allowedId, key: 'subjectId', value: { submitter: 'contactId' } }
     ]
   });
 
