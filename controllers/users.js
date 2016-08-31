@@ -5,14 +5,14 @@ var people  = require('./people'),
     places = require('./places'),
     db = require('../db');
 
-var USER_EDITABLE_FIELDS  = [
+var USER_EDITABLE_FIELDS = [
   'password',
   'known',
   'place',
   'type'
 ];
 
-var SETTINGS_EDITABLE_FIELDS  = [
+var SETTINGS_EDITABLE_FIELDS = [
   'fullname',
   'email',
   'phone',
