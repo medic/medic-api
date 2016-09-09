@@ -1,0 +1,1 @@
+grunt jshint && scripts/copy_ddoc http://admin:pass@localhost:5984 medic medic-e2e-temp && COUCH_URL=http://admin:pass@localhost:5984/medic-e2e-temp scripts/create_e2e_fixtures && COUCH_URL=http://admin:pass@localhost:5984/medic-e2e-temp node server.js

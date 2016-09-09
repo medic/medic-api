@@ -1,0 +1,1 @@
+clear;grunt jshint && API_URL=http://admin:pass@localhost:5988 COUCH_URL=http://admin:pass@localhost:5984/medic-e2e-temp grunt test_e2e
