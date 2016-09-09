@@ -52,8 +52,6 @@ function requestChanges(username, ids) {
 
 describe('changes handler', function() {
 
-  before(utils.init);
-
   beforeEach(function(done) {
     utils.beforeEach()
       .then(function() {
