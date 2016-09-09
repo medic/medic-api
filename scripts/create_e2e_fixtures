@@ -2,6 +2,24 @@
 
 # we assume that the admin user already exists
 
-# TODO create the PARENT_PLACE
+# create the PARENT_PLACE
+curl -X PUT \
+	--data '{ "_id":"PARENT_PLACE", "type":"district_hospital", "name":"Big Parent Hospital" }' \
+	"$COUCH_URL"
 
-# TODO create user: bob
+# create user: bob
+curl -X POST \
+	--data '
+	  "username":"bob",
+	  "password":"secret",
+	  "place":{
+	     "type":"health_center",
+	     "name":"Bobville",
+	     "parent":"PARENT_PLACE",
+	  },
+	  "contact":{
+	    "name":"Bob",
+	  },
+	  "roles":["district-manager", "kujua_user", "data_entry", "district_admin"],
+	' \
+	"$COUCH_URL"
