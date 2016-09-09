@@ -1,7 +1,20 @@
 var _ = require('underscore'),
     assert = require('chai').assert,
+    db = require('../../../db'),
     request = require('request'),
+    Url = require('url'),
     utils = require('../utils');
+
+var DB_NAME = db.settings.db;
+var PARENT_PLACE_ID = 'parent-place';
+
+var adminUrl = process.env.API_URL;
+function userUrl(name) {
+  var url = Url.parse(adminUrl);
+  url.auth = name + ':secret';
+  console.log('userUrl', Url.format(url));
+  return Url.format(url);
+}
 
 function assertChangeIds(changes) {
   changes = JSON.parse(changes).results;
@@ -9,36 +22,6 @@ function assertChangeIds(changes) {
 
   var expectedIds = Array.prototype.slice.call(arguments, 1);
   assert.deepEqual(_.pluck(changes, 'id'), expectedIds);
-}
-
-function examplePlace(name, type) {
-  return {
-    name: name,
-    type: type || 'health_center',
-  };
-}
-
-function createUser(name, place) {
-  return new Promise(function(resolve, reject) {
-    request({
-      method: 'POST',
-      uri: process.env.API_URL + '/api/v1/users',
-      postData: {
-        username: name,
-        password: 'secret',
-        place: place,
-        contact: {
-          name: name,
-        },
-      },
-    },
-    function(err, res) {
-      if(err) {
-        return reject(err);
-      }
-      return resolve(res);
-    });
-  });
 }
 
 function requestChanges(username, ids) {
@@ -52,7 +35,7 @@ function requestChanges(username, ids) {
     }
 
     request({
-      uri: process.env.API_URL + '/medic-api-e2e/_changes',
+      uri: userUrl(username) + '/' + DB_NAME + '/_changes',
       qs: qs,
     },
     function(err, res, body) {
@@ -67,48 +50,46 @@ function requestChanges(username, ids) {
   });
 }
 
-function uploadDoc(doc) {
-  console.log('TODO: upload to db', doc);
-  return new Promise(function(resolve, reject) {
-    request({
-      method: 'PUT',
-      uri: process.env.API_URL + '/medic-api-e2e/' + doc._id,
-      json: true,
-      body: doc,
-    },
-    function(err, res) {
-      if(err || res.statusCode !== 201) {
-        return reject(err || res);
-      }
-      return resolve();
-    });
-  });
-}
-
 describe('changes handler', function() {
 
-  beforeEach(utils.beforeEach);
+  before(utils.init);
 
-  it('should allow access to replicate medic ddoc', function() {
-    // given
-    return createUser('alice', examplePlace('Aliceville'))
-
+  beforeEach(function(done) {
+    utils.beforeEach()
       .then(function() {
-
-        // and TODO ddoc exists
-        return uploadDoc({ _id:'_design/medic' })
-          .then(function() {
-
-            // when
-            // request is made for changes to _design/medic
-            return requestChanges('alice', ['_design/medic'])
-              .then(function(changes) {
-
-                // then
-                assertChangeIds(changes, '_design/medic');
-              });
-          });
+        console.log('changes.beforeEach()', 'utils.beforeEach returned.');
+        request({
+          method: 'PUT',
+          uri: adminUrl + '/' + DB_NAME + '/' + PARENT_PLACE_ID,
+          json: true,
+          body: {
+            _id: PARENT_PLACE_ID,
+            type: 'district_hospital',
+            name: 'Big Parent Hospital',
+          },
+        },
+        function(err, res, body) {
+          console.log('result of creating parent place:', err, body);
+          if(err || res.statusCode !== 201) {
+            return done(err || new Error([res.statusCode, JSON.stringify(body)].join('::')));
+          }
+          return done();
+        });
       });
+  });
+
+  it.only('should allow access to replicate medic ddoc', function() {
+    // given user 'bob' is set up in utils
+    // and ddoc exists
+
+    // when
+    // request is made for changes to _design/medic
+    return requestChanges('bob', ['_design/medic'])
+      .then(function(changes) {
+
+      // then
+      assertChangeIds(changes, '_design/medic');
+    });
   });
 
   it.skip('should filter the changes to relevant ones', function() {
