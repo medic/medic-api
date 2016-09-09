@@ -1,0 +1,7 @@
+#!/bin/bash -eu
+
+# we assume that the admin user already exists
+
+# TODO create the PARENT_PLACE
+
+# TODO create user: bob
