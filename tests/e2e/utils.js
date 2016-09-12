@@ -18,7 +18,7 @@ var _ = require('underscore'),
   }
 
   // check that COUCH_URL doesn't look like the prod db (could be messy)
-  if(process.env.COUCH_URL.endsWith('/medic')) {
+  if(process.env.COUCH_URL.endsWith('/medic') && process.env.CI !== 'true') {
     throw new Error('It looks like you\'re using your standard COUCH_URL for medic-api e2e tests.  You must use a temporary database!');
   }
 
