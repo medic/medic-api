@@ -4,5 +4,17 @@ export COUCH_URL=http://admin:pass@localhost:5984/medic-e2e-temp
 grunt jshint
 curl -X DELETE "$COUCH_URL"
 curl -X PUT "$COUCH_URL"
+
+delete_doc() {
+	local docUrl="$COUCH_URL/$1"
+	local rev="$(curl $docUrl | jq --raw-output ._rev)"
+	if [[ "$rev" != "null" ]]; then
+		curl -X DELETE "$docUrl?rev=$rev"
+	fi
+}
+
+echo "[$0] deleting users created by test fixtures..."
+delete_doc "../_users/org.couchdb.user:bob"
+
 scripts/copy_ddoc http://admin:pass@localhost:5984 medic medic-e2e-temp
 node server.js
