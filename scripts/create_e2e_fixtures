@@ -2,24 +2,28 @@
 
 # we assume that the admin user already exists
 
-# create the PARENT_PLACE
+echo "[$0] creating the PARENT_PLACE..."
 curl -X PUT \
 	--data '{ "_id":"PARENT_PLACE", "type":"district_hospital", "name":"Big Parent Hospital" }' \
-	"$COUCH_URL"
+	"$COUCH_URL/PARENT_PLACE"
 
-# create user: bob
+echo "[$0] creating user: bob..."
 curl -X POST \
-	--data '
+	-H 'Content-Type: application/json' \
+	--data '{
 	  "username":"bob",
 	  "password":"secret",
 	  "place":{
+	     "_id":"fixture:bobville",
 	     "type":"health_center",
 	     "name":"Bobville",
-	     "parent":"PARENT_PLACE",
+	     "parent":"PARENT_PLACE"
 	  },
 	  "contact":{
-	    "name":"Bob",
+	    "name":"Bob"
 	  },
-	  "roles":["district-manager", "kujua_user", "data_entry", "district_admin"],
-	' \
-	"$COUCH_URL"
+	  "roles":["district-manager", "kujua_user", "data_entry", "district_admin"]
+	}' \
+	"$API_URL/api/v1/users"
+
+echo "[$0] Finished."

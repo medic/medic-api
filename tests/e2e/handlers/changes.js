@@ -1,27 +1,32 @@
 var _ = require('underscore'),
     assert = require('chai').assert,
-    db = require('../../../db'),
+    PouchDB = require('pouchdb'),
     request = require('request'),
     Url = require('url'),
     utils = require('../utils');
 
-var DB_NAME = db.settings.db;
-var PARENT_PLACE_ID = 'parent-place';
+var DB_NAME = require('../../../db').settings.db,
+    adminDb = new PouchDB(process.env.COUCH_URL);
 
 var adminUrl = process.env.API_URL;
 function userUrl(name) {
   var url = Url.parse(adminUrl);
   url.auth = name + ':secret';
   console.log('userUrl', Url.format(url));
-  return Url.format(url);
+  return url;
 }
 
 function assertChangeIds(changes) {
   changes = JSON.parse(changes).results;
-  assert.equal(changes.length, 1);
+
+  // filter out deleted entries - we never delete in our production code, but
+  // some docs are deleted in the test setup/teardown
+  changes = _.reject(changes, function(change) {
+    return change.deleted;
+  });
 
   var expectedIds = Array.prototype.slice.call(arguments, 1);
-  assert.deepEqual(_.pluck(changes, 'id'), expectedIds);
+  assert.deepEqual(_.pluck(changes, 'id').sort(), expectedIds.sort());
 }
 
 function requestChanges(username, ids) {
@@ -34,10 +39,11 @@ function requestChanges(username, ids) {
       };
     }
 
-    request({
-      uri: userUrl(username) + '/' + DB_NAME + '/_changes',
-      qs: qs,
-    },
+    var url = userUrl(username);
+    url.pathname = '/' + DB_NAME + '/_changes';
+    url = Url.format(url);
+console.log('Requesting changes feed from', url);
+    request({ uri:url, qs:qs, },
     function(err, res, body) {
       if(err) {
         return reject(err);
@@ -55,29 +61,13 @@ describe('changes handler', function() {
   beforeEach(function(done) {
     utils.beforeEach()
       .then(function() {
-        console.log('changes.beforeEach()', 'utils.beforeEach returned.');
-        request({
-          method: 'PUT',
-          uri: adminUrl + '/' + DB_NAME + '/' + PARENT_PLACE_ID,
-          json: true,
-          body: {
-            _id: PARENT_PLACE_ID,
-            type: 'district_hospital',
-            name: 'Big Parent Hospital',
-          },
-        },
-        function(err, res, body) {
-          console.log('result of creating parent place:', err, body);
-          if(err || res.statusCode !== 201) {
-            return done(err || new Error([res.statusCode, JSON.stringify(body)].join('::')));
-          }
-          return done();
-        });
-      });
-  });
+        done();
+      })
+      .catch(done);
+    });
 
-  it.only('should allow access to replicate medic ddoc', function() {
-    // given user 'bob' is set up in utils
+  it('should allow access to replicate medic ddoc', function() {
+    // given user 'bob' is set up in fixtures
     // and ddoc exists
 
     // when
@@ -85,23 +75,53 @@ describe('changes handler', function() {
     return requestChanges('bob', ['_design/medic'])
       .then(function(changes) {
 
-      // then
-      assertChangeIds(changes, '_design/medic');
-    });
+        // then
+        return assertChangeIds(changes, '_design/medic');
+      });
   });
 
-  it.skip('should filter the changes to relevant ones', function() {
+  it.only('should filter the changes to relevant ones', function() {
     // given
-    // TODO a normal user
-    // TODO an irrelevant doc is inserted
-    // TODO a relevant doc is inserted
-    // TODO an irrelevant doc is inserted
+    // a normal user (bob, from fixtures)
+    // and an irrelevant doc is inserted
+    return adminDb.post({ type:'clinic', parent:{ _id:'nowhere' } })
+      .then(function() {
 
-    // when
-    // TODO full changes feed is requested
+        // and a relevant doc is inserted
+        return adminDb.put({ type:'clinic', _id:'very-relevant', parent:{ _id:'fixture:bobville' } });
 
-    // then
-    // TODO only change listed is for the relevant doc
+      })
+      .then(function() {
+
+        // and an irrelevant doc is inserted
+        return adminDb.post({ type:'clinic', parent:{ _id:'irrelevant-place' } });
+
+      })
+      .then(function() {
+
+        // when
+        // full changes feed is requested
+        return requestChanges('bob');
+
+      })
+      .then(function(changes) {
+
+        // then
+        // only change listed is for the relevant doc
+        return assertChangeIds(changes,
+            'appcache',
+            'messages-sw',
+            'messages-ne',
+            'messages-hi',
+            'messages-fr',
+            'messages-es',
+            'messages-en',
+            'resources',
+            '_design/medic-client',
+            'org.couchdb.user:bob',
+            'fixture:bobville',
+            'very-relevant');
+      });
   });
 
   describe('unallocated access', function() {
