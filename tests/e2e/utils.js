@@ -56,7 +56,8 @@ module.exports = {
                   id.indexOf('org.couchdb.user:') === 0 ||
                   ['appcache', 'messages', 'resources', 'PARENT_PLACE']
                       .indexOf(id) !== -1 ||
-                  id.indexOf('messages-') === 0;
+                  id.indexOf('messages-') === 0 ||
+                  id.indexOf('fixture:') === 0;
             })
             .map(function(row) {
               return {
