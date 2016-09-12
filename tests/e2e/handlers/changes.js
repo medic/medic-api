@@ -303,15 +303,4 @@ describe('changes handler', function() {
     // TODO
   });
 
-  it.skip('should clean up when the client connection is closed - #2476', function() {
-    // given
-    // TODO
-
-    // when
-    // TODO
-
-    // then
-    // TODO
-  });
-
 });
