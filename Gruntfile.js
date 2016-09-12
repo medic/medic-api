@@ -53,6 +53,9 @@ module.exports = function(grunt) {
       },
       e2e: {
         src: ['tests/e2e/**/*.js'],
+        options: {
+          timeout: 10000,
+        },
       },
     },
   });
