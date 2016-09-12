@@ -68,6 +68,7 @@ module.exports = {
             .value();
       })
       .then(function(docs) {
+        console.log('Removing all docs in list.', docs);
         //return Promise.all(docs.map(db.remove));
         return Promise.all(docs.map(function(doc) {
           return db.remove(doc);
