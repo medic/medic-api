@@ -71,7 +71,15 @@ module.exports = {
         console.log('Removing all docs in list.', docs);
         //return Promise.all(docs.map(db.remove));
         return Promise.all(docs.map(function(doc) {
-          return db.remove(doc);
+          return db.remove(doc)
+            .catch(function(err) {
+              console.log('Error deleting doc - maybe we should carry on?', doc, err);
+              if(err.status !== 404) {
+                // Sometimes the docs we want to delete are missing.  It't not
+                // clear why, but ignoring the error seems to be safe.
+                throw err;
+              }
+            });
         }));
       });
   },
