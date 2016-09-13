@@ -26,4 +26,23 @@ curl -X POST \
 	}' \
 	"$API_URL/api/v1/users"
 
+echo "[$0] creating user: clare..."
+curl -X POST \
+	-H 'Content-Type: application/json' \
+	--data '{
+	  "username":"clare",
+	  "password":"secret",
+	  "place":{
+	     "_id":"fixture:clareville",
+	     "type":"health_center",
+	     "name":"Clareville",
+	     "parent":"PARENT_PLACE"
+	  },
+	  "contact":{
+	    "name":"Clare"
+	  },
+	  "roles":[]
+	}' \
+	"$API_URL/api/v1/users"
+
 echo "[$0] Finished."
