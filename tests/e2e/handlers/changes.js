@@ -56,15 +56,61 @@ console.log('Requesting changes feed from', url);
   });
 }
 
+var AppSettings = {
+
+  get: function() {
+    // TODO get the current app_settings from the db
+    return adminDb.get('_design/medic')
+      .then(function(ddoc) {
+        AppSettings.original = ddoc.app_settings;
+        return JSON.parse(JSON.stringify(ddoc.app_settings));
+      });
+  },
+
+  set: function(newAppSettings) {
+    AppSettings.modified = true;
+
+    return adminDb.get('_design/medic')
+      .then(function(ddoc) {
+        ddoc.app_settings = newAppSettings;
+        return adminDb.put(ddoc);
+      });
+  },
+
+  restore: function() {
+    if(AppSettings.modified) {
+      return adminDb.get('_design/medic')
+        .then(function(ddoc) {
+          ddoc.app_settings = AppSettings.original;
+          return adminDb.put(ddoc);
+        });
+    } else {
+      return Promise.resolve();
+    }
+  }
+
+};
+
 describe('changes handler', function() {
 
   beforeEach(function(done) {
+    AppSettings.modified = false;
+    delete AppSettings.original;
+
     utils.beforeEach()
       .then(function() {
         done();
       })
       .catch(done);
-    });
+  });
+
+  afterEach(function(done) {
+    AppSettings.restore()
+      .then(function() {
+        done();
+      })
+      .catch(done);
+  });
 
   it('should allow access to replicate medic ddoc', function() {
     // given user 'bob' is set up in fixtures
@@ -126,37 +172,91 @@ describe('changes handler', function() {
 
   describe('reports with no associated contact', function() {
 
-    it('should be supplied for a user with can_view_unallocated_data_records permission', function() {
-      // given
-      // a user with can_view_unallocated_data_records: bob (created in fixtures)
-      // and
-      // an unassigned data_record
-      return adminDb.post({ _id:'unallocated_report', type:'data_record' })
-        .then(function() {
+    describe('for a user with can_view_unallocated_data_records permission', function() {
 
-          // when the changes feed is requested
-          return requestChanges('bob');
+      it('should be visible if district_admins_access_unallocated_messages is enabled', function() {
+        // given
+        // a user with can_view_unallocated_data_records: bob (created in fixtures)
 
-        })
-        .then(function(changes) {
+        // and
+        // district_admins_access_unallocated_messages is enabled
+        return AppSettings.get()
+          .then(function(appSettings) {
 
-          // then it should contain the unassigned data_record
-          return assertChangeIds(changes,
-            'appcache',
-            'messages-sw',
-            'messages-ne',
-            'messages-hi',
-            'messages-fr',
-            'messages-es',
-            'messages-en',
-            'resources',
-            '_design/medic-client',
-            'org.couchdb.user:bob',
-            'fixture:bobville',
-            'unallocated_report');
+            appSettings.district_admins_access_unallocated_messages = true;
+            return AppSettings.set(appSettings);
+
+          })
+          .then(function() {
+
+            // and
+            // an unassigned data_record
+            return adminDb.post({ _id:'unallocated_report', type:'data_record' });
+
+          })
+          .then(function() {
+
+            // when
+            // the changes feed is requested
+            return requestChanges('bob');
+
+          })
+          .then(function(changes) {
+
+            // then
+            // it should contain the unassigned data_record
+            return assertChangeIds(changes,
+              'appcache',
+              'messages-sw',
+              'messages-ne',
+              'messages-hi',
+              'messages-fr',
+              'messages-es',
+              'messages-en',
+              'resources',
+              '_design/medic-client',
+              'org.couchdb.user:bob',
+              'fixture:bobville',
+              'unallocated_report');
+
+          });
 
         });
-    });
+
+      });
+
+      it('should not be visible if district_admins_access_unallocated_messages is disabled', function() {
+        // given
+        // a user with can_view_unallocated_data_records: bob (created in fixtures)
+        // and
+        // district_admins_access_unallocated_messages is not enabled
+        // and
+        // an unassigned data_record
+        return adminDb.post({ _id:'unallocated_report', type:'data_record' })
+          .then(function() {
+
+            // when the changes feed is requested
+            return requestChanges('bob');
+
+          })
+          .then(function(changes) {
+
+            // then it should contain the unassigned data_record
+            return assertChangeIds(changes,
+              'appcache',
+              'messages-sw',
+              'messages-ne',
+              'messages-hi',
+              'messages-fr',
+              'messages-es',
+              'messages-en',
+              'resources',
+              '_design/medic-client',
+              'org.couchdb.user:bob',
+              'fixture:bobville');
+
+          });
+      });
 
     it('should NOT be supplied for a user without can_view_unallocated_data_records permission', function() {
       // given
