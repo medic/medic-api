@@ -124,66 +124,69 @@ describe('changes handler', function() {
       });
   });
 
-  describe('unallocated access', function() {
+  describe('reports with no associated contact', function() {
 
-    describe('when configured', function() {
+    it('should be supplied for a user with can_view_unallocated_data_records permission', function() {
+      // given
+      // a user with can_view_unallocated_data_records: bob (created in fixtures)
+      // and
+      // an unassigned data_record
+      return adminDb.post({ _id:'unallocated_report', type:'data_record' })
+        .then(function() {
 
-      beforeEach(function() {
-        // TODO configure unallocated access
-      });
+          // when the changes feed is requested
+          return requestChanges('bob');
 
-      it.skip('should be allowed for users with the correct permission', function() {
-        // given
-        // TODO a user with the correct permissions
-        // TODO an unallocated doc
+        })
+        .then(function(changes) {
 
-        // when
-        // TODO changes feed is requested
+          // then it should contain the unassigned data_record
+          return assertChangeIds(changes,
+            'appcache',
+            'messages-sw',
+            'messages-ne',
+            'messages-hi',
+            'messages-fr',
+            'messages-es',
+            'messages-en',
+            'resources',
+            '_design/medic-client',
+            'org.couchdb.user:bob',
+            'fixture:bobville',
+            'unallocated_report');
 
-        // then
-        // TODO it should include the unallocated doc
-      });
-
-      it.skip('should not be allowed for users without the correct permission', function() {
-        // given
-        // TODO a user without the correct permission
-        // TODO an unallocated doc
-
-        // when
-        // TODO changes feed is requested
-
-        // then
-        // TODO it should not include the unallocated doc
-      });
-
+        });
     });
 
-    describe('when not configured', function() {
+    it('should NOT be supplied for a user without can_view_unallocated_data_records permission', function() {
+      // given
+      // a user without can_view_unallocated_data_records: clare (created in fixtures)
+      // and
+      // an unassigned data_record
+      return adminDb.post({ _id:'unallocated_report', type:'data_record' })
+        .then(function() {
 
-      it.skip('should not be allowed for users with the correct permission', function() {
-        // given
-        // TODO a user with the correct permissions
-        // TODO an unallocated doc
+          // when the changes feed is requested
+          return requestChanges('clare');
 
-        // when
-        // TODO changes feed is requested
+        })
+        .then(function(changes) {
 
-        // then
-        // TODO it should not include the unallocated doc
-      });
+          // then it should contain the unassigned data_record
+          return assertChangeIds(changes,
+            'appcache',
+            'messages-sw',
+            'messages-ne',
+            'messages-hi',
+            'messages-fr',
+            'messages-es',
+            'messages-en',
+            'resources',
+            '_design/medic-client',
+            'org.couchdb.user:clare',
+            'fixture:clareville');
 
-      it.skip('should not be allowed for users without the correct permission', function() {
-        // given
-        // TODO a user without the correct permission
-        // TODO an unallocated doc
-
-        // when
-        // TODO changes feed is requested
-
-        // then
-        // TODO it should not include the unallocated doc
-      });
-
+        });
     });
 
   });
