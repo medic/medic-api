@@ -6,10 +6,10 @@ module.exports = function(grunt) {
   grunt.initConfig({
     nodeunit: {
       all: [
-        'tests/**/*.js',
-        '!tests/utils.js',
-        '!tests/integration/**/*.js',
-        '!tests/e2e/**/*.js'
+        'tests/unit/**/*.js',
+        '!tests/unit/utils.js',
+        '!tests/unit/integration/**/*.js',
+        '!tests/unit/e2e/**/*.js'
       ]
     },
     jshint: {
