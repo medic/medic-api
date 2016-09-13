@@ -353,13 +353,16 @@ describe('changes handler', function() {
 
   it.skip('should not return reports about you by someone above you in the hierarchy', function() {
     // given
-    // TODO
+    // TODO a chw user exists
+    // TODO and a boss user exists
+    // TODO and the CHW submits a report
+    // TODO and the boss submits a report
 
     // when
-    // TODO
+    // TODO the changes feed is requested
 
     // then
-    // TODO
+    // TODO the changes feed only includes the report from the CHW
   });
 
   it.skip('should not return reports about your place by someone above you in the hierarchy', function() {
