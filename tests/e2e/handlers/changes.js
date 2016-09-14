@@ -354,18 +354,47 @@ describe('changes handler', function() {
 
   });
 
-  it.skip('should not return reports about you by someone above you in the hierarchy', function() {
+  it('should not return reports about you by someone above you in the hierarchy', function() {
     // given
-    // TODO a chw user exists
-    // TODO and a boss user exists
-    // TODO and the CHW submits a report
-    // TODO and the boss submits a report
+    // a chw user exists (created in fixtures)
 
-    // when
-    // TODO the changes feed is requested
+    // and a boss user exists (created in fixtures)
 
-    // then
-    // TODO the changes feed only includes the report from the CHW
+    // and the CHW submits a report for his area
+    return adminDb.put({ type:'data_record', _id:'chw-report', place_id:'fixture:chwville', contact:{ _id:'fixture:user:chw' }, form:'some-form' })
+      .then(function() {
+
+        // and the boss submits a report, also for the CHW's area
+        return adminDb.put({ type:'data_record', _id:'chw-boss-report', place_id:'fixture:chwville', contact:{ _id:'fixture:user:chw-boss' }, form:'some-form' });
+
+      })
+      .then(function() {
+
+        // when
+        // the changes feed is requested by the CHW
+        return requestChanges('chw');
+
+      })
+      .then(function(changes) {
+
+        // then
+        // the changes feed only includes the report from the CHW
+        return assertChangeIds(changes,
+            'appcache',
+            'messages-sw',
+            'messages-ne',
+            'messages-hi',
+            'messages-fr',
+            'messages-es',
+            'messages-en',
+            'resources',
+            '_design/medic-client',
+            'org.couchdb.user:chw',
+            'fixture:chwville',
+            'fixture:user:chw',
+            'chw-report');
+
+      });
   });
 
   it.skip('should not return reports about your place by someone above you in the hierarchy', function() {
