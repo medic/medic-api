@@ -129,6 +129,7 @@ describe('changes handler', function() {
   it.only('should filter the changes to relevant ones', function() {
     // given
     // a normal user (bob, from fixtures)
+
     // and an irrelevant doc is inserted
     return adminDb.post({ type:'clinic', parent:{ _id:'nowhere' } })
       .then(function() {
@@ -139,7 +140,7 @@ describe('changes handler', function() {
       })
       .then(function() {
 
-        // and an irrelevant doc is inserted
+        // and another irrelevant doc is inserted
         return adminDb.post({ type:'clinic', parent:{ _id:'irrelevant-place' } });
 
       })
@@ -178,8 +179,7 @@ describe('changes handler', function() {
         // given
         // a user with can_view_unallocated_data_records: bob (created in fixtures)
 
-        // and
-        // district_admins_access_unallocated_messages is enabled
+        // and district_admins_access_unallocated_messages is enabled
         return AppSettings.get()
           .then(function(appSettings) {
 
@@ -189,8 +189,7 @@ describe('changes handler', function() {
           })
           .then(function() {
 
-            // and
-            // an unassigned data_record
+            // and an unassigned data_record
             return adminDb.post({ _id:'unallocated_report', type:'data_record' });
 
           })
@@ -228,20 +227,22 @@ describe('changes handler', function() {
       it('should not be visible if district_admins_access_unallocated_messages is disabled', function() {
         // given
         // a user with can_view_unallocated_data_records: bob (created in fixtures)
-        // and
-        // district_admins_access_unallocated_messages is not enabled
-        // and
-        // an unassigned data_record
+
+        // and district_admins_access_unallocated_messages is not enabled
+
+        // and an unassigned data_record
         return adminDb.post({ _id:'unallocated_report', type:'data_record' })
           .then(function() {
 
-            // when the changes feed is requested
+            // when
+            // the changes feed is requested
             return requestChanges('bob');
 
           })
           .then(function(changes) {
 
-            // then it should contain the unassigned data_record
+            // then
+            // it should contain the unassigned data_record
             return assertChangeIds(changes,
               'appcache',
               'messages-sw',
@@ -261,18 +262,20 @@ describe('changes handler', function() {
     it('should NOT be supplied for a user without can_view_unallocated_data_records permission', function() {
       // given
       // a user without can_view_unallocated_data_records: clare (created in fixtures)
-      // and
-      // an unassigned data_record
+
+      // and an unassigned data_record
       return adminDb.post({ _id:'unallocated_report', type:'data_record' })
         .then(function() {
 
-          // when the changes feed is requested
+          // when
+          // the changes feed is requested
           return requestChanges('clare');
 
         })
         .then(function(changes) {
 
-          // then it should contain the unassigned data_record
+          // then
+          // it should contain the unassigned data_record
           return assertChangeIds(changes,
             'appcache',
             'messages-sw',
