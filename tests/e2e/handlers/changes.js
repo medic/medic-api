@@ -296,60 +296,49 @@ describe('changes handler', function() {
 
   describe('replication depth', function() {
 
-    describe('when configured', function() {
+    it.skip('should show contacts to a user only if they are within the configured depth', function() {
+      // given
+      // TODO replication depth is configured
+      // and TODO a contact exists within the replication depth
+      // and TODO a contact exists outside the replication depth
 
-      beforeEach(function() {
-        // TODO configure replication depth
-      });
+      // when
+      // TODO changes feed is requested
 
-      it.skip('should be respected when the user has permission', function() {
-        // given
-        // TODO a user with the correct permissions
-
-        // when
-        // TODO
-
-        // then
-        // TODO
-      });
-
-      it.skip('should not be respected when the user does not have permission', function() {
-        // given
-        // TODO
-
-        // when
-        // TODO
-
-        // then
-        // TODO
-      });
-
+      // then
+      // TODO changes feed only contains the contact within the configured depth
     });
 
-    describe('when not configured', function() {
+    it.skip('should show reports to a user only if they are within the configured depth', function() {
+      // given
+      // TODO replication depth is configured
+      // TODO and a user with the correct permissions
+      // and TODO a contact exists within the replication depth
+      // and TODO a contact exists outside the replication depth
+      // and TODO the contact within replication depth submits a report
+      // and TODO the contact outside replication depth submits a report
 
-      it.skip('should not be respected when the user has permission', function() {
-        // given
-        // TODO a user with the correct permissions
+      // when
+      // TODO changes feed is requested
 
-        // when
-        // TODO
+      // then
+      // TODO changes feed only contains the report from the contact within the configured depth
+    });
 
-        // then
-        // TODO
-      });
+    it.skip('should correspond to the largest number for any role the user has', function() {
+    });
 
-      it.skip('should not be respected when the user does not have permission', function() {
-        // given
-        // TODO
+    it.skip('should have no effect if not configured', function() {
+      // given
+      // replication depth is not configured
+      // and TODO a contact exists within replication depth 1
+      // and TODO a contact exists within replication depth 2
 
-        // when
-        // TODO
+      // when
+      // TODO the changes feed is requested
 
-        // then
-        // TODO
-      });
-
+      // then
+      // TODO the changes feed contains both the shallow and the deep contacts
     });
 
   });
