@@ -17,7 +17,7 @@ function userUrl(name) {
 }
 
 function assertChangeIds(changes) {
-  changes = JSON.parse(changes).results;
+  changes = changes.results;
 
   // filter out deleted entries - we never delete in our production code, but
   // some docs are deleted in the test setup/teardown
@@ -29,9 +29,11 @@ function assertChangeIds(changes) {
   assert.deepEqual(_.pluck(changes, 'id').sort(), expectedIds.sort());
 }
 
-function requestChanges(username, ids) {
+function requestChanges(username, ids, last_seq) {
   return new Promise(function(resolve, reject) {
-    var qs = {};
+    var qs = {
+      since: last_seq || 0,
+    };
     if(ids) {
       qs = {
         filter: '_doc_ids',
@@ -42,7 +44,7 @@ function requestChanges(username, ids) {
     var url = userUrl(username);
     url.pathname = '/' + DB_NAME + '/_changes';
     url = Url.format(url);
-console.log('Requesting changes feed from', url);
+console.log('Requesting changes feed from', url, 'with qs', qs);
     request({ uri:url, qs:qs, },
     function(err, res, body) {
       if(err) {
@@ -51,7 +53,7 @@ console.log('Requesting changes feed from', url);
       if(res.statusCode !== 200) {
         return reject(body);
       }
-      return resolve(body);
+      return resolve(JSON.parse(body));
     });
   });
 }
@@ -505,15 +507,53 @@ describe('changes handler', function() {
     // TODO
   });
 
-  it.skip('should update the feed when the doc is updated', function() {
-    // given
-    // TODO
+  it('should update the feed when the doc is updated', function() {
+    var seq_number;
 
-    // when
-    // TODO
+    return Promise.resolve()
+      .then(function() {
 
-    // then
-    // TODO
+        // given
+        // a doc is created
+        return adminDb.put({ _id:'visible', type:'clinic', parent: { _id:'fixture:chwville' } });
+
+      })
+      .then(function() {
+
+        // and the doc has already been seen in the changes feed
+        return requestChanges('chw');
+
+      })
+      .then(function(changes) {
+console.log('changes', changes);
+console.log('changes.last_seq', changes.last_seq);
+        seq_number = changes.last_seq;
+
+      })
+      .then(function() {
+
+        // and subsequently the doc is updated
+        return adminDb.get('visible');
+      })
+      .then(function(doc) {
+        doc.udpated = true;
+        return adminDb.put(doc);
+
+      })
+      .then(function() {
+
+        // when
+        // the changes feed is requested since the previously-seen seq_number
+console.log('>>>>> Requesting since', seq_number);
+        return requestChanges('chw', null, seq_number);
+
+      })
+      .then(function(changes) {
+
+        // then
+        // the modified doc is included in the changes feed
+        return assertChangeIds(changes, 'visible');
+      });
   });
 
 });
