@@ -453,7 +453,7 @@ describe('changes handler', function() {
 
   });
 
-  it('should not return reports about you by someone above you in the hierarchy', function() {
+  it('should not return reports about your place by someone above you in the hierarchy', function() {
     // given
     // a chw user exists (created in fixtures)
 
@@ -494,17 +494,6 @@ describe('changes handler', function() {
             'chw-report');
 
       });
-  });
-
-  it.skip('should not return reports about your place by someone above you in the hierarchy', function() {
-    // given
-    // TODO
-
-    // when
-    // TODO
-
-    // then
-    // TODO
   });
 
   it('should update the feed when the doc is updated', function() {
