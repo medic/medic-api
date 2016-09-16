@@ -505,17 +505,6 @@ describe('changes handler', function() {
     // TODO
   });
 
-  it.skip('should filter out undeleted docs they are not allowed to see', function() {
-    // given
-    // TODO
-
-    // when
-    // TODO
-
-    // then
-    // TODO
-  });
-
   it.skip('should update the feed when the doc is updated', function() {
     // given
     // TODO
