@@ -516,15 +516,4 @@ describe('changes handler', function() {
     // TODO
   });
 
-  it.skip('should replicate new docs to relevant feeds', function() {
-    // given
-    // TODO
-
-    // when
-    // TODO
-
-    // then
-    // TODO
-  });
-
 });
