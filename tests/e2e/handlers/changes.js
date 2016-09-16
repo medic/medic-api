@@ -348,23 +348,59 @@ describe('changes handler', function() {
         });
     });
 
-    it.skip('should show reports to a user only if they are within the configured depth', function() {
+    it('should correspond to the largest number for any role the user has', function() {
       // given
-      // TODO replication depth is configured
-      // TODO and a user with the correct permissions
-      // and TODO a contact exists within the replication depth
-      // and TODO a contact exists outside the replication depth
-      // and TODO the contact within replication depth submits a report
-      // and TODO the contact outside replication depth submits a report
+      // replication depth is configured differently for two roles that the same
+      // user has
+      return AppSettings.get()
+        .then(function(appSettings) {
+          appSettings.replication_depth = [
+            { role:'district_admin', depth:1 },
+            { role:'district-manager', depth:2 },
+          ];
+          return AppSettings.set(appSettings);
 
-      // when
-      // TODO changes feed is requested
+        })
+        .then(function() {
 
-      // then
-      // TODO changes feed only contains the report from the contact within the configured depth
-    });
+          // and a contact exists within the replication depth
+          return adminDb.put({ _id:'should-be-visible', type:'clinic', parent: { _id:'fixture:chwville' } });
 
-    it.skip('should correspond to the largest number for any role the user has', function() {
+        })
+        .then(function() {
+
+          // and a contact exists outside the replication depth
+          return adminDb.put({ _id:'should-be-visible-too', type:'person', parent: { _id:'should-be-visible', parent:{ _id:'fixture:chwville' } } });
+
+        })
+        .then(function() {
+
+          // when
+          // changes feed is requested
+          return requestChanges('chw');
+
+        })
+        .then(function(changes) {
+
+          // then
+          // changes feed contains both contacts
+          return assertChangeIds(changes,
+              'appcache',
+              'messages-sw',
+              'messages-ne',
+              'messages-hi',
+              'messages-fr',
+              'messages-es',
+              'messages-en',
+              'resources',
+              '_design/medic-client',
+              'org.couchdb.user:chw',
+              'fixture:user:chw',
+              'fixture:chwville',
+              'should-be-visible',
+              'should-be-visible-too');
+
+        });
     });
 
     it('should have no effect if not configured', function() {
