@@ -126,7 +126,7 @@ describe('changes handler', function() {
       });
   });
 
-  it.only('should filter the changes to relevant ones', function() {
+  it('should filter the changes to relevant ones', function() {
     // given
     // a normal user (bob, from fixtures)
 
@@ -296,17 +296,56 @@ describe('changes handler', function() {
 
   describe('replication depth', function() {
 
-    it.skip('should show contacts to a user only if they are within the configured depth', function() {
+    it('should show contacts to a user only if they are within the configured depth', function() {
       // given
-      // TODO replication depth is configured
-      // and TODO a contact exists within the replication depth
-      // and TODO a contact exists outside the replication depth
+      // replication depth is configured
+      return AppSettings.get()
+        .then(function(appSettings) {
+          appSettings.replication_depth = [
+            { role:'district_admin', depth:1 },
+          ];
+          return AppSettings.set(appSettings);
 
-      // when
-      // TODO changes feed is requested
+        })
+        .then(function() {
 
-      // then
-      // TODO changes feed only contains the contact within the configured depth
+          // and a contact exists within the replication depth
+          return adminDb.put({ _id:'should-be-visible', type:'clinic', parent: { _id:'fixture:chwville' } });
+
+        })
+        .then(function() {
+
+          // and a contact exists outside the replication depth
+          return adminDb.put({ _id:'should-be-hidden', type:'person', parent: { _id:'should-be-visible', parent:{ _id:'fixture:chwville' } } });
+
+        })
+        .then(function() {
+
+          // when
+          // changes feed is requested
+          return requestChanges('chw');
+
+        })
+        .then(function(changes) {
+
+          // then
+          // changes feed only contains the contact within the configured depth
+          return assertChangeIds(changes,
+              'appcache',
+              'messages-sw',
+              'messages-ne',
+              'messages-hi',
+              'messages-fr',
+              'messages-es',
+              'messages-en',
+              'resources',
+              '_design/medic-client',
+              'org.couchdb.user:chw',
+              'fixture:user:chw',
+              'fixture:chwville',
+              'should-be-visible');
+
+        });
     });
 
     it.skip('should show reports to a user only if they are within the configured depth', function() {
@@ -328,17 +367,50 @@ describe('changes handler', function() {
     it.skip('should correspond to the largest number for any role the user has', function() {
     });
 
-    it.skip('should have no effect if not configured', function() {
+    it('should have no effect if not configured', function() {
       // given
       // replication depth is not configured
-      // and TODO a contact exists within replication depth 1
-      // and TODO a contact exists within replication depth 2
+      Promise.resolve()
+        .then(function() {
 
-      // when
-      // TODO the changes feed is requested
+          // and a contact exists within replication depth 1
+          return adminDb.put({ _id:'should-be-visible', type:'clinic', parent: { _id:'fixture:chwville' } });
 
-      // then
-      // TODO the changes feed contains both the shallow and the deep contacts
+        })
+        .then(function() {
+
+          // and a contact exists within replication depth 2
+          return adminDb.put({ _id:'should-also-be-visible', type:'person', parent: { _id:'should-be-visible', parent:{ _id:'fixture:chwville' } } });
+
+        })
+        .then(function() {
+
+          // when
+          // the changes feed is requested
+          return requestChanges('chw');
+
+        })
+        .then(function(changes) {
+
+          // then
+          // the changes feed contains both the shallow and the deep contacts
+          return assertChangeIds(changes,
+              'appcache',
+              'messages-sw',
+              'messages-ne',
+              'messages-hi',
+              'messages-fr',
+              'messages-es',
+              'messages-en',
+              'resources',
+              '_design/medic-client',
+              'org.couchdb.user:chw',
+              'fixture:user:chw',
+              'fixture:chwville',
+              'should-be-visible',
+              'should-also-be-visible');
+
+        });
     });
 
   });
