@@ -12,7 +12,6 @@ var adminUrl = process.env.API_URL;
 function userUrl(name) {
   var url = Url.parse(adminUrl);
   url.auth = name + ':secret';
-  console.log('userUrl', Url.format(url));
   return url;
 }
 
@@ -44,7 +43,6 @@ function requestChanges(username, ids, last_seq) {
     var url = userUrl(username);
     url.pathname = '/' + DB_NAME + '/_changes';
     url = Url.format(url);
-console.log('Requesting changes feed from', url, 'with qs', qs);
     request({ uri:url, qs:qs, },
     function(err, res, body) {
       if(err) {
@@ -514,8 +512,6 @@ describe('changes handler', function() {
 
       })
       .then(function(changes) {
-console.log('changes', changes);
-console.log('changes.last_seq', changes.last_seq);
         seq_number = changes.last_seq;
 
       })
@@ -533,7 +529,6 @@ console.log('changes.last_seq', changes.last_seq);
 
         // when
         // the changes feed is requested since the previously-seen seq_number
-console.log('>>>>> Requesting since', seq_number);
         return requestChanges('chw', null, seq_number);
 
       })

@@ -3,7 +3,7 @@
 var serverUrl = process.argv[2],
     sourceName = process.argv[3],
     destName = process.argv[4],
-    
+
     PouchDB = require('pouchdb');
 
 function log(message) {

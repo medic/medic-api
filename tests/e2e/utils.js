@@ -43,12 +43,9 @@ module.exports = {
   adminUser: adminUser,
 
   beforeEach: function() {
-    console.log('e2e.utils.beforeEach()');
-
     // delete all docs from DB except for standard medic docs
     return db.allDocs()
       .then(function(res) {
-        console.log('e2e.utils.beforeEach() :: fetched all docs');
         return _.chain(res.rows)
             .reject(function(row) {
               var id = row.id;
