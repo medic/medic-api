@@ -15,11 +15,11 @@ var error = function(code, message) {
 
 var getDepth = function(userCtx) {
   if (!userCtx.roles || !userCtx.roles.length) {
-    return null;
+    return -1;
   }
   var settings = config.get('replication_depth');
   if (!settings) {
-    return null;
+    return -1;
   }
   var depth = -1;
   userCtx.roles.forEach(function(role) {
@@ -50,6 +50,7 @@ var bindSubjectIds = function(feed, callback) {
 
       var keys = [];
       var depth = getDepth(feed.userCtx);
+console.log('bindSubjectIds()', 'Fetched depth', depth);
       if (depth >= 0) {
         for (var i = 0; i <= depth; i++) {
           keys.push([ facilityId, i ]);
@@ -213,6 +214,7 @@ var hasNewApplicableDoc = function(feed, changes) {
       return false;
     }
     var depth = getDepth(feed.userCtx);
+console.log('hasNewApplicableDoc()', 'Fetched depth', depth);
     if (depth < 0) {
       depth = Infinity;
     }
