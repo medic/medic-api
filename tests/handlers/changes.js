@@ -33,7 +33,9 @@ exports.tearDown = function (callback) {
 exports['allows "can_access_directly" users direct access'] = function(test) {
   test.expect(2);
 
-  var testReq = 'fake request';
+  var testReq = {
+    query: {}
+  };
   var testRes = 'fake response';
 
   var userCtx = 'fake userCtx';
@@ -55,7 +57,8 @@ exports['allows access to replicate medic settings'] = function(test) {
   var testReq = {
     query: {
       filter: '_doc_ids',
-      doc_ids: '["_design/medic"]'
+      doc_ids: '["_design/medic"]',
+      proxy: 'true'
     }
   };
   var testRes = 'fake response';

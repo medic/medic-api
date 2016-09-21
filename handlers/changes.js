@@ -322,8 +322,10 @@ module.exports = {
       if (err) {
         return serverUtils.error(err, req, res);
       }
-      if (auth.hasAllPermissions(userCtx, 'can_access_directly') ||
-          (req.query.filter === '_doc_ids' && req.query.doc_ids === '["_design/medic"]')) {
+      var isDdocWatchRequest = req.query.proxy === 'true' &&
+          req.query.filter === '_doc_ids' &&
+          req.query.doc_ids === '["_design/medic"]';
+      if (auth.hasAllPermissions(userCtx, 'can_access_directly') || isDdocWatchRequest) {
         proxy.web(req, res);
       } else {
         var feed = {
