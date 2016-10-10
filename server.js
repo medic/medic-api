@@ -28,7 +28,7 @@ var _ = require('underscore'),
     forms = require('./controllers/forms'),
     createDomain = require('domain').create;
 
-http.globalAgent.maxSockets = 100;
+http.globalAgent.maxSockets = Infinity;
 
 // requires content-type application/json header
 var jsonParser = bodyParser.json({limit: '32mb'});
