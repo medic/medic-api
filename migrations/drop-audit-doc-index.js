@@ -22,7 +22,7 @@ var needsUpdate = function(row) {
 var createNewDocs = function(oldDocs, callback) {
   var newDocs = oldDocs.map(function(doc) {
     return {
-      _id: doc.record_id,
+      _id: doc.record_id + '-audit',
       type: 'audit_record',
       history: doc.history
     };

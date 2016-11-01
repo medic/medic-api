@@ -57,7 +57,7 @@ describe('drop-audit-doc-index migration', function() {
           _id: '_design/medic'
         },
         {
-          _id: 'x',
+          _id: 'x-audit',
           type: 'audit_record',
           history: [{
             action: 'create',
@@ -71,7 +71,7 @@ describe('drop-audit-doc-index migration', function() {
           }]
         },
         {
-          _id: 'y',
+          _id: 'y-audit',
           type: 'audit_record',
           history: [{
             action: 'create',
