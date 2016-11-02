@@ -68,10 +68,10 @@ var changeDocIdsBatch = function(skip, callback) {
           return callback(err);
         }
         // The newSkip is based on the old skip, plus the number of
-        // unchanged files. Changed files can't be included because
+        // unchanged docs. Changed docs can't be included because
         // they have just been deleted so will not be included in the
-        // next query result. This means some records will be processed
-        // more than once but gaurantees every record will be processed
+        // next query result. This means some docs will be processed
+        // more than once but gaurantees every doc will be processed
         // at least once.
         var newSkip = skip + BATCH_SIZE - oldDocs.length;
         callback(null, newSkip, true);
