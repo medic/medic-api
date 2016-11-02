@@ -2,7 +2,7 @@ var db = require('../db'),
     async = require('async');
 
 var DDOC_ID = '_design/medic';
-var BATCH_SIZE = 100;
+var BATCH_SIZE = 1000;
 
 var dropView = function(callback) {
   db.audit.get(DDOC_ID, function(err, ddoc) {
