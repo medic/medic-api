@@ -101,8 +101,7 @@ app.post(pathPrefix + 'login', jsonParser, login.post);
   pathPrefix + '_changes',
   // Interacting with mongo filters uses POST
   pathPrefix + '_find',
-  pathPrefix + '_explain',
-
+  pathPrefix + '_explain'
 ].forEach(function(url) {
   app.all(url, function(req, res) {
     proxy.web(req, res);
