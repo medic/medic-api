@@ -85,21 +85,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get(pathPrefix + 'login', login.get);
 app.post(pathPrefix + 'login', jsonParser, login.post);
 
-app.all(appPrefix + 'update_settings/*', function(req, res) {
-  // don't audit the app settings
-  proxy.web(req, res);
-});
-app.all(pathPrefix + '_revs_diff', function(req, res) {
-  // don't audit the _revs_diff
-  proxy.web(req, res);
-});
-app.all(pathPrefix + '_local/*', function(req, res) {
-  // don't audit the _local docs
-  proxy.web(req, res);
-});
-app.all(pathPrefix + '_bulk_get/*', function(req, res) {
-  // don't audit the _bulk_get request
-  proxy.web(req, res);
+// Requests we don't wish to audit
+// (usually because POST is just used here to pass more parameters)
+[
+  appPrefix + 'update_settings/*',
+  // Replication machinery we don't care to audit
+  pathPrefix + '_local/*',
+  pathPrefix + '_revs_diff',
+  pathPrefix + '_missing_revs',
+  // Can use POST for specifiying ids
+  pathPrefix + '_all_docs',
+  pathPrefix + '_design/*/_list/**',
+  pathPrefix + '_design/*/_show/**',
+  pathPrefix + '_design/*/_view/*',
+  pathPrefix + '_changes',
+  // Interacting with mongo filters uses POST
+  pathPrefix + '_find',
+  pathPrefix + '_explain',
+
+].forEach(function(url) {
+  app.all(url, function(req, res) {
+    proxy.web(req, res);
+  });
 });
 
 app.get('/setup/poll', function(req, res) {
@@ -598,8 +605,13 @@ proxy.on('proxyReq', function(proxyReq, req, res) {
 /**
  * Redirect to add the trailing slash without which mysterious bugs occur...
  */
-app.get(pathPrefix + '_design/' + db.settings.ddoc + '/_rewrite', function(req, res) {
-  res.redirect(appPrefix);
+[
+  appPrefix,
+  pathPrefix
+].forEach(function(url) {
+  app.get(url.substring(url.length - 1), function(req, res) {
+    res.redirect(url);
+  });
 });
 
 var audit = function(req, res) {
