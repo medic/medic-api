@@ -840,11 +840,13 @@ exports['get audit log handles special characters'] = function(test) {
       } }
     ]
   });
-  var expected = '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:html="http://www.w3.org/TR/REC-html140" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="{Audit:en}"><Table><Row><Cell><Data ss:Type="String">{_id:en}</Data></Cell><Cell><Data ss:Type="String">{Type:en}</Data></Cell><Cell><Data ss:Type="String">{Timestamp:en}</Data></Cell><Cell><Data ss:Type="String">{Author:en}</Data></Cell><Cell><Data ss:Type="String">{Action:en}</Data></Cell><Cell><Data ss:Type="String">{Document:en}</Data></Cell></Row><Row><Cell><Data ss:Type="String">def</Data></Cell><Cell><Data ss:Type="String">feedback</Data></Cell><Cell><Data ss:Type="String">01, Jan 1970, 03:25:45 +00:00</Data></Cell><Cell><Data ss:Type="String">gareth</Data></Cell><Cell><Data ss:Type="String">create</Data></Cell><Cell><Data ss:Type="String">{"type":"feedback","description":"😎😎😎"}</Data></Cell></Row></Table></Worksheet></Workbook>';
-  controller.get({ type: 'audit', tz: '0', format: 'xml' }, function(err, results) {
-    test.equals(results, expected);
-    test.equals(list.callCount, 1);
-    test.done();
+  var expected = '<?xml version="1.0" encoding="UTF-8"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:html="http://www.w3.org/TR/REC-html140" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><?mso-application progid="Excel.Sheet"?><Worksheet ss:Name="{Audit:en}"><Table><Row><Cell><Data ss:Type="String">{_id:en}</Data></Cell><Cell><Data ss:Type="String">{Type:en}</Data></Cell><Cell><Data ss:Type="String">{Timestamp:en}</Data></Cell><Cell><Data ss:Type="String">{Author:en}</Data></Cell><Cell><Data ss:Type="String">{Action:en}</Data></Cell><Cell><Data ss:Type="String">{Document:en}</Data></Cell></Row><Row><Cell><Data ss:Type="String">def</Data></Cell><Cell><Data ss:Type="String">feedback</Data></Cell><Cell><Data ss:Type="String">01, Jan 1970, 03:25:45 +00:00</Data></Cell><Cell><Data ss:Type="String">gareth</Data></Cell><Cell><Data ss:Type="String">create</Data></Cell><Cell><Data ss:Type="String">{"type":"feedback","description":"😎😎😎"}</Data></Cell></Row></Table></Worksheet></Workbook>';
+  controller.get({ type: 'audit', tz: '0', format: 'xml' }, function(err, streamFn) {
+    readStream(streamFn, function(results) {
+      test.equals(results, expected);
+      test.equals(list.callCount, 1);
+      test.done();
+    });
   });
 };
 
