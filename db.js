@@ -108,8 +108,7 @@ if (couchUrl) {
       }
     },
     audit: {
-      view: function() {},
-      list: function() {}
+      view: function() {}
     },
     db: {
       get: function() {},
