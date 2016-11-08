@@ -94,6 +94,7 @@ app.post(pathPrefix + 'login', jsonParser, login.post);
   pathPrefix + '_revs_diff',
   pathPrefix + '_missing_revs',
   // Can use POST for specifiying ids
+  pathPrefix + '_bulk_get',
   pathPrefix + '_all_docs',
   pathPrefix + '_design/*/_list/**',
   pathPrefix + '_design/*/_show/**',
