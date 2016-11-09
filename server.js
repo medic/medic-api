@@ -85,26 +85,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get(pathPrefix + 'login', login.get);
 app.post(pathPrefix + 'login', jsonParser, login.post);
 
-// Requests we don't wish to audit
-// (usually because POST is just used here to pass more parameters)
-[
-  appPrefix + 'update_settings/*',
+var UNAUDITED_ENDPOINTS = [
+  // This takes arbitrary JSON, not whole documents with `_id`s, so it's not
+  // auditable in our current framework
+  '_design/' + db.settings.ddoc + '/_rewrite/update_settings/*',
   // Replication machinery we don't care to audit
-  pathPrefix + '_local/*',
-  pathPrefix + '_revs_diff',
-  pathPrefix + '_missing_revs',
-  // Can use POST for specifiying ids
-  pathPrefix + '_bulk_get',
-  pathPrefix + '_all_docs',
-  pathPrefix + '_design/*/_list/**',
-  pathPrefix + '_design/*/_show/**',
-  pathPrefix + '_design/*/_view/*',
-  pathPrefix + '_changes',
+  '_local/*',
+  '_revs_diff',
+  '_missing_revs',
+  // These may use POST for specifiying ids
+  // NB: _changes is dealt with elsewhere: see `changesHandler`
+  '_all_docs',
+  '_bulk_get',
+  '_design/*/_list/*',
+  '_design/*/_show/*',
+  '_design/*/_view/*',
   // Interacting with mongo filters uses POST
-  pathPrefix + '_find',
-  pathPrefix + '_explain'
-].forEach(function(url) {
-  app.all(url, function(req, res) {
+  '_find',
+  '_explain'
+];
+
+UNAUDITED_ENDPOINTS.forEach(function(url) {
+  // NB: as this evaluates first, it will skip any hooks defined in the rest of
+  // the file below, and these calls will all be proxies. If you want to avoid
+  // auditing and do other things as well, look to how the _changes feed is
+  // handled.
+  app.all(pathPrefix +  url, function(req, res) {
     proxy.web(req, res);
   });
 });
@@ -603,13 +609,15 @@ proxy.on('proxyReq', function(proxyReq, req, res) {
 });
 
 /**
- * Redirect to add the trailing slash without which mysterious bugs occur...
+ * Make sure requests to these urls sans trailing / are redirected to the
+ * correct slashed endpoint to avoid weird bugs
  */
 [
   appPrefix,
   pathPrefix
 ].forEach(function(url) {
-  app.get(url.substring(url.length - 1), function(req, res) {
+  var urlSansTrailingSlash = url.slice(0, - 1);
+  app.get(urlSansTrailingSlash, function(req, res) {
     res.redirect(url);
   });
 });
