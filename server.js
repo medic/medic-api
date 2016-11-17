@@ -650,34 +650,56 @@ proxyForAuditing.on('error', function(err, req, res) {
   serverUtils.serverError(JSON.stringify(err), req, res);
 });
 
-ddocExtraction.run(function(err) {
+var couchdbCheck = function(callback) {
+  db.request({}, function(err, body) {
+    if (err) {
+      callback(err);
+    }
+
+    var semvers = body.version && body.version.match(/(\d+)\.\d+\.\d+/);
+    if (!semvers || semvers[1] !== '2') {
+      callback('Only CouchDB 2.x is supported, v' + body.version + ' detected.');
+    }
+
+    callback();
+  });
+};
+
+couchdbCheck(function(err) {
   if (err) {
-    console.error('Fatal error trying to extract ddocs', err);
+    console.error('Fatal error checking CouchDB', err);
     process.exit(1);
   }
-  console.log('DDoc extraction completed successfully');
-  config.load(function(err) {
+
+  ddocExtraction.run(function(err) {
     if (err) {
-      console.error('Fatal error loading config', err);
+      console.error('Fatal error trying to extract ddocs', err);
       process.exit(1);
     }
-    console.log('Configuration loaded successfully');
-    config.listen();
-    translations.run(function(err) {
+    console.log('DDoc extraction completed successfully');
+    config.load(function(err) {
       if (err) {
-        console.error('Fatal error merging translations', err);
+        console.error('Fatal error loading config', err);
         process.exit(1);
       }
-      console.log('Translations merged successfully');
-      migrations.run(function(err) {
+      console.log('Configuration loaded successfully');
+      config.listen();
+      translations.run(function(err) {
         if (err) {
-          console.error('Fatal error running database migrations', err);
+          console.error('Fatal error merging translations', err);
           process.exit(1);
         }
-        console.log('Database migrations completed successfully');
-        scheduler.init();
-        app.listen(apiPort, function() {
-          console.log('Medic API listening on port ' + apiPort);
+        console.log('Translations merged successfully');
+        migrations.run(function(err) {
+          if (err) {
+            console.error('Fatal error running database migrations', err);
+            process.exit(1);
+          }
+          console.log('Database migrations completed successfully');
+          scheduler.init();
+          app.listen(apiPort, function() {
+            console.log('Medic API listening on port ' + apiPort);
+          });
         });
       });
     });
