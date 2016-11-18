@@ -1,4 +1,5 @@
 var _ = require('underscore'),
+    async = require('async'),
     bodyParser = require('body-parser'),
     express = require('express'),
     morgan = require('morgan'),
@@ -658,51 +659,40 @@ var couchdbCheck = function(callback) {
 
     var semvers = body.version && body.version.match(/(\d+)\.\d+\.\d+/);
     if (!semvers || semvers[1] !== '2') {
-      callback('Only CouchDB 2.x is supported, v' + body.version + ' detected.');
+      callback(new Error('Only CouchDB 2.x is supported, v' + body.version + ' detected.'));
     }
 
     callback();
   });
 };
 
-couchdbCheck(function(err) {
+var asyncLog = function(message) {
+  return async.asyncify(function() {
+    console.log(message);
+  });
+};
+
+async.series([
+  couchdbCheck,
+  asyncLog('CouchDB version check successful'),
+  ddocExtraction.run,
+  asyncLog('DDoc extraction completed successfully'),
+  config.load,
+  asyncLog('Configuration loaded successfully'),
+  async.asyncify(config.listen),
+  translations.run,
+  asyncLog('Translations merged successfully'),
+  migrations.run,
+  asyncLog('Database migrations completed successfully'),
+  async.asyncify(scheduler.init)
+], function(err) {
   if (err) {
-    console.error('Fatal error checking CouchDB', err);
+    console.error('Fatal error initialising medic-api', err);
     process.exit(1);
   }
 
-  ddocExtraction.run(function(err) {
-    if (err) {
-      console.error('Fatal error trying to extract ddocs', err);
-      process.exit(1);
-    }
-    console.log('DDoc extraction completed successfully');
-    config.load(function(err) {
-      if (err) {
-        console.error('Fatal error loading config', err);
-        process.exit(1);
-      }
-      console.log('Configuration loaded successfully');
-      config.listen();
-      translations.run(function(err) {
-        if (err) {
-          console.error('Fatal error merging translations', err);
-          process.exit(1);
-        }
-        console.log('Translations merged successfully');
-        migrations.run(function(err) {
-          if (err) {
-            console.error('Fatal error running database migrations', err);
-            process.exit(1);
-          }
-          console.log('Database migrations completed successfully');
-          scheduler.init();
-          app.listen(apiPort, function() {
-            console.log('Medic API listening on port ' + apiPort);
-          });
-        });
-      });
-    });
+  app.listen(apiPort, function() {
+    console.log('Medic API listening on port ' + apiPort);
   });
 });
 
