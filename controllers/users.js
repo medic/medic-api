@@ -260,29 +260,6 @@ var setContactParent = function(data, response, callback) {
   }
 };
 
-/*
- * Update admin password if user is an admin.
- */
-var updateAdminPassword = function(username, password, callback) {
-  if (!username || !password) {
-    return callback();
-  }
-  module.exports._getAdmins(function(err, admins) {
-    if (err) {
-      return callback(err);
-    }
-    if (!admins[username]) {
-      // not an admin
-      return callback();
-    }
-    db.request({
-      path: '_config/admins/' + username,
-      method: 'PUT',
-      body: JSON.stringify(password)
-    }, callback);
-  });
-};
-
 var hasParent = function(facility, id) {
   // do not modify facility
   var p = facility;
@@ -293,13 +270,6 @@ var hasParent = function(facility, id) {
     p = p.parent;
   }
   return false;
-};
-
-var getAdmins = function(callback) {
-  var opts = {
-    path: '_config/admins'
-  };
-  db.request(opts, callback);
 };
 
 /*
@@ -442,7 +412,6 @@ module.exports = {
   _createPlace: createPlace,
   _createUserSettings: createUserSettings,
   _getType : getType,
-  _getAdmins: getAdmins,
   _getAllUsers: getAllUsers,
   _getAllUserSettings: getAllUserSettings,
   _getFacilities: getFacilities,
@@ -450,7 +419,6 @@ module.exports = {
   _getUserUpdates: getUserUpdates,
   _hasParent: hasParent,
   _setContactParent: setContactParent,
-  _updateAdminPassword: updateAdminPassword,
   _updatePlace: updatePlace,
   _updateUser: updateUser,
   _updateUserSettings: updateUserSettings,
@@ -467,7 +435,6 @@ module.exports = {
       self._getAllUsers,
       self._getAllUserSettings,
       self._getFacilities,
-      self._getAdmins
     ], function(err, results) {
       if (err) {
         return callback(err);
@@ -555,11 +522,6 @@ module.exports = {
         if (data.contact) {
           series.push(function(cb) {
             self._validateContact(settings.contact_id, user.facility_id, cb);
-          });
-        }
-        if (data.password) {
-          series.push(function(cb) {
-            self._updateAdminPassword(username, data.password, cb);
           });
         }
         series.push(function(cb) {
