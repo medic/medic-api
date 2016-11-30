@@ -34,7 +34,7 @@ var getAdmins = function(callback) {
       protocol: db.settings.protocol,
       hostname: db.settings.host,
       port: db.settings.port,
-      pathname: '_node/couchdb@localhost/_config/admins'
+      pathname: '_node/' + process.env.COUCH_NODE_NAME + '/_config/admins'
     }),
     auth: {
       user: db.settings.username,

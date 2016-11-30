@@ -7,7 +7,7 @@ module.exports = {
     db.request({
       db: '_node',
       method: 'DELETE',
-      path: 'couchdb@localhost/_config/native_query_servers/erlang',
+      path: process.env.COUCH_NODE_NAME + '/_config/native_query_servers/erlang',
     }, function(err) {
       if (err && err.error === 'not_found') {
         console.log('Erlang support is already disabled.');
