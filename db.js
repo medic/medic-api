@@ -1,8 +1,10 @@
 var path = require('path'),
     url = require('url'),
-    nano = require('nano');
+    nano = require('nano'),
+    request = require('request');
 
 var couchUrl = process.env.COUCH_URL;
+var ftiURL = process.env.FTI_URL;
 
 var sanitizeResponse = function(err, body, headers, callback) {
   // Remove the `uri` and `statusCode` headers passed in from nano.  This
@@ -26,6 +28,8 @@ if (couchUrl) {
   var auditDbName = dbName + '-audit';
   var db = nano(baseUrl);
 
+  ftiURL = ftiURL || baseUrl.replace('5984', '5986');
+
   module.exports = db;
   module.exports.medic = db.use(dbName);
   module.exports.audit = db.use(auditDbName);
@@ -47,23 +51,31 @@ if (couchUrl) {
   }
 
   module.exports.fti = function(index, data, cb) {
-    var url = path.join('_fti/local', module.exports.settings.db,
-                        '_design', module.exports.settings.ddoc, index);
+    var url = ftiURL + '/' + path.join('_fti/local', module.exports.settings.db,
+                                       '_design', module.exports.settings.ddoc, index);
     if (data.q && !data.limit) {
       data.limit = 1000;
     }
-    var opts = { path: url };
+    var opts = { url: url };
     if (data.q) {
       opts.method = 'post';
       opts.form = data;
     } else {
       opts.qs = data;
     }
-    module.exports.request(opts, function(err, result) {
+
+    request(opts, function(err, response, result) {
       if (err) {
         // the request itself failed
         return cb(err);
       }
+
+      try {
+        result = JSON.parse(result);
+      } catch (e) {
+        return cb(e);
+      }
+
       if (data.q && !result.rows) {
         // the query failed for some reason
         return cb(result);
