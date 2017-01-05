@@ -47,6 +47,13 @@ describe('add-uuid-to-scheduled-tasks migration', function() {
           {
             due: FUTURE,
             messages: [
+              { to: '+123456' },
+              { to: '+098765' }
+            ]
+          },
+          {
+            due: FUTURE,
+            messages: [
               { to: '+123456' }
             ]
           },
@@ -103,6 +110,13 @@ describe('add-uuid-to-scheduled-tasks migration', function() {
               due: PAST,
               messages: [
                 { to: '+123456' } // overdue messages should not be corrected
+              ]
+            },
+            {
+              due: FUTURE,
+              messages: [
+                { to: '+123456', uuid: UUID_REGEX },
+                { to: '+098765', uuid: UUID_REGEX }
               ]
             },
             {
