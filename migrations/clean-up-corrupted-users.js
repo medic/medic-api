@@ -1,4 +1,4 @@
-var async = require('async'),
+var doWhilst = require('async/doWhilst'),
     db = require('../db'),
     BATCH_SIZE = 100;
 
@@ -49,7 +49,7 @@ module.exports = {
   run: function(callback) {
     var skip = 0;
     var again = true;
-    async.doWhilst(
+    doWhilst(
       function(callback) {
         fixUsers(skip, function(err, _skip, _again) {
           if (err) {
