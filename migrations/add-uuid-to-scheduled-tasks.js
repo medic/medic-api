@@ -14,16 +14,30 @@ var updateMessage = function(message) {
 };
 
 var updateTask = function(task) {
-  return moment().isBefore(moment(task.due)) &&
-         task.messages.some(updateMessage);
+  var updated = false;
+  if (moment().isBefore(moment(task.due))) {
+    task.messages.forEach(function(task) {
+      if (updateMessage(task)) {
+        updated = true;
+      }
+    });
+  }
+  return updated;
 };
 
 var update = function(row) {
-  return row.doc &&
-         row.doc.type === 'data_record' &&
-         row.doc.form &&
-         row.doc.scheduled_tasks &&
-         row.doc.scheduled_tasks.some(updateTask);
+  var updated = false;
+  if (row.doc &&
+      row.doc.type === 'data_record' &&
+      row.doc.form &&
+      row.doc.scheduled_tasks) {
+    row.doc.scheduled_tasks.forEach(function(task) {
+      if (updateTask(task)) {
+        updated = true;
+      }
+    });
+  }
+  return updated;
 };
 
 var save = function(docs, callback) {
