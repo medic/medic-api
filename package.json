@@ -16,7 +16,6 @@
     "moment": "2.8.x",
     "morgan": "^1.3.2",
     "nano": "^6.1.2",
-    "node-uuid": "^1.4.7",
     "openrosa-formlist": "medic/openrosa-formlist#sax",
     "pass-stream": "0.1.x",
     "querystring": "^0.2.0",
