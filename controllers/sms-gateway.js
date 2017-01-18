@@ -8,9 +8,10 @@ var async = require('async'),
     recordUtils = require('./record-utils'),
     STATUS_MAP = {
       UNSENT: 'received-by-gateway',
+      PENDING: 'forwarded-by-gateway',
       SENT: 'sent',
       DELIVERED: 'delivered',
-      FAILED: 'failed'
+      FAILED: 'failed',
     };
 
 function warn() {
