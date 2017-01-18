@@ -80,6 +80,31 @@ exports['post() should update statuses supplied in request'] = function(test) {
   });
 };
 
+exports['post() should persist unknown statuses'] = function(test) {
+  // given
+  var updateMessage = sinon.stub(messageUtils, 'updateMessage');
+  updateMessage.callsArgWith(2, null, {});
+
+  sinon.stub(messageUtils, 'getMessages').callsArgWith(1, null, []);
+
+  var req = { body: {
+    updates: [
+      { id:'1', status:'INVENTED-1' },
+      { id:'2', status:'INVENTED-2' },
+    ],
+  } };
+
+  // when
+  controller.post(req, function(err) {
+    // then
+    test.equals(err, null);
+    test.equals(updateMessage.callCount, 2);
+    test.equals(updateMessage.withArgs('1', { state:'unrecognised', details:{ gateway_status:'INVENTED-1' } }).callCount, 1);
+    test.equals(updateMessage.withArgs('2', { state:'unrecognised', details:{ gateway_status:'INVENTED-2' } }).callCount, 1);
+    test.done();
+  });
+};
+
 exports['post() should provide WO messages in response'] = function(test) {
   // given
   sinon.stub(messageUtils, 'getMessages').callsArgWith(1, null, [

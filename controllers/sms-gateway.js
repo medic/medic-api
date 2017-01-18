@@ -29,19 +29,26 @@ function saveToDb(message, callback) {
 }
 
 function updateStateFor(update, callback) {
-  var newState = STATUS_MAP[update.status];
-  if (!newState) {
-    return callback(new Error('Could not work out new state for update: ' + JSON.stringify(update)));
+  var details,
+      newState = STATUS_MAP[update.status];
+  if (newState) {
+    if(update.reason) {
+      details = { reason: update.reason };
+    }
+  } else {
+    newState = 'unrecognised';
+    details = { gateway_status: update.status };
+    updateState(update.id, 'unrecognised', details, callback);
   }
-  updateState(update.id, newState, update.reason, callback);
+  updateState(update.id, newState, details, callback);
 }
 
-function updateState(messageId, newState, reason, callback) {
+function updateState(messageId, newState, details, callback) {
   var updateBody = {
     state: newState,
   };
-  if (reason) {
-    updateBody.details = { reason: reason };
+  if(details) {
+    updateBody.details = details;
   }
   messageUtils.updateMessage(messageId, updateBody, callback);
 }
