@@ -38,7 +38,6 @@ function updateStateFor(update, callback) {
   } else {
     newState = 'unrecognised';
     details = { gateway_status: update.status };
-    updateState(update.id, 'unrecognised', details, callback);
   }
   updateState(update.id, newState, details, callback);
 }
