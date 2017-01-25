@@ -52,20 +52,20 @@ function updateState(messageId, newState, details, callback) {
   messageUtils.updateMessage(messageId, updateBody, callback);
 }
 
-function markMessagesForwarded(messages, callback) {
-  async.eachSeries(
-    messages,
-    function(message, callback) {
-      updateState(message.id, 'forwarded-to-gateway', null, callback);
-    },
-    function(err) {
-      if (err) {
-        warn(err);
-      }
-      return callback();
-    }
-  );
-}
+// function markMessagesForwarded(messages, callback) {
+//   async.eachSeries(
+//     messages,
+//     function(message, callback) {
+//       updateState(message.id, 'forwarded-to-gateway', null, callback);
+//     },
+//     function(err) {
+//       if (err) {
+//         warn(err);
+//       }
+//       return callback();
+//     }
+//   );
+// }
 
 function getOutgoing(callback) {
   messageUtils.getMessages({ state: 'pending' }, function(err, pendingMessages) {
@@ -80,9 +80,11 @@ function getOutgoing(callback) {
         content: message.message,
       };
     });
-    markMessagesForwarded(messages, function() {
+    // TODO add this back in once this function also queries for
+    // messages in state: 'forwarded-to-gateway'
+    // markMessagesForwarded(messages, function() {
       callback(null, messages);
-    });
+    // });
   });
 }
 
