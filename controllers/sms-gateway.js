@@ -63,7 +63,7 @@ function getWebappState(update) {
 function updateStateFor(update) {
   var newState = getWebappState(update);
   if (!newState) {
-    return Promise.reject(new Error('Could not work out new state for update: ' + JSON.stringify(update)));
+    return updateState(update.id, 'unrecognised', 'gateway status: ' + update.status);
   }
 
   if (update.status === 'FAILED' && update.reason) {
@@ -151,10 +151,6 @@ module.exports = {
       .then(getWebappOriginatingMessages)
       .then(function(woMessages) {
         callback(null, { messages: woMessages.outgoingPayload });
-        _.forEach(woMessages.docs, function(doc) {
-          updateState(doc.id, 'scheduled')
-            .catch(warn);
-        });
       })
       .catch(callback);
   },
