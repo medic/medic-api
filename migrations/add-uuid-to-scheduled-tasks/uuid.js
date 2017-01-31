@@ -1,3 +1,4 @@
+// jshint ignore: start
 //     uuid.js
 //
 //     Copyright (c) 2010-2012 Robert Kieffer
