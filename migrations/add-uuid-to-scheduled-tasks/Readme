@@ -1,0 +1,20 @@
+
+Migration package to fix any scheduled messages that are missing UUIDs.  Runs a
+temp query then updates document data using the bulk docs API.
+
+Run:
+
+  COUCH_URL=http://admin:secret@localhost:5984 \
+    make
+
+Requirements:
+
+  curl
+  make
+  node
+
+Enviornment Variables:
+
+  COUCH_URL The URL to the CouchDB to update
+            e.g. http://admin:secret@localhost:5984
+
