@@ -1,5 +1,7 @@
-module.exports = function(doc) {
-  var now = new Date();
+
+var map = function(doc) {
+  var now = new Date(),
+      match = false;
   //var now = new Date('2017-01-06T12:00:00.000Z');
   if (doc &&
       doc.type === 'data_record' &&
@@ -11,13 +13,21 @@ module.exports = function(doc) {
         //log("task.due is " + new Date(task.due).valueOf());
         task.messages.forEach(function(msg) {
           if (!msg.uuid) {
-            emit();
+            match = true;
           }
         });
       }
     });
   }
+  if (match) {
+    emit();
+  }
 };
 console.log(JSON.stringify({
-  map: module.exports.toString()
+  _id: "_design/migrations-add-uuid-to-scheduled-tasks",
+  views: {
+    "scheduled-tasks-no-uuids": {
+      map: map.toString() //module.exports.toString()
+    }
+  }
 }));

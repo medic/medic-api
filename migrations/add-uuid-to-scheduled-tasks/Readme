@@ -1,20 +1,29 @@
 
-Migration package to fix any scheduled messages that are missing UUIDs.  Runs a
-temp query then updates document data using the bulk docs API.
-
-Run:
-
-  COUCH_URL=http://admin:secret@localhost:5984 \
-    make
+Migration package to fix any scheduled messages that are missing UUIDs.
+Installs a view and then updates documents in that view using the bulk docs
+API. Results from the bulk docs requests are printed on stdout.
 
 Requirements:
 
   curl
-  make
-  node
+  node >= 0.12
 
-Enviornment Variables:
+Environment Variables:
 
   COUCH_URL The URL to the CouchDB to update
             e.g. http://admin:secret@localhost:5984
+
+Run:
+
+  export COUCH_URL=http://admin:secret@localhost:5984 && \
+  curl -H 'application/json' -d@design-doc.json $COUCH_URL/medic && \
+  node run.js > results
+
+Test:
+
+  Confirm the `total_rows` property on the view is 0:
+
+    ddoc='_design/migrations-add-uuid-to-scheduled-tasks'
+    view='scheduled-tasks-no-uuids'
+    curl $COUCH_URL/medic/$ddoc/_view/$view | head | grep total_rows
 
