@@ -38,7 +38,7 @@ node add-uuid-to-scheduled-tasks.js | tee -a "$PREFIX/results"
 echo "results in $PREFIX/results"
 
 echo "\ntesting..."
-$CURL $LOCAL_COUCH/medic/$DDOC/_view/$VIEW | \
+$CURL "$COUCH_URL/medic/$DDOC/_view/$VIEW" | \
   head | grep 'total_rows":0,'
 
 echo "\nremoving design doc..."

@@ -22,7 +22,7 @@ Environment Variables:
 
   DEBUG 
   
-    When set to a value it's the output will be more verbose.
+    When set the output will be more verbose.
 
 Automated:
 
