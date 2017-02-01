@@ -105,7 +105,7 @@ var processViewData = function(callback) {
     });
     res.on('end', function() {
       var body = JSON.parse(resBody);
-      if (body.total_rows == 0) {
+      if (body.total_rows === 0) {
         // done processing view results
         return callback();
       }
