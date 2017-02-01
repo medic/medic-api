@@ -33,10 +33,8 @@ $CURL "$COUCH_URL/medic/$DDOC/_view/$VIEW?include_docs=true" | \
   gzip > "$BACKUP"
 echo "saved in $BACKUP"
 
-exit 0
-
 echo "\nupdating data..."
-node run.js | tee -a "$PREFIX/results"
+node add-uuid-to-scheduled-tasks.js | tee -a "$PREFIX/results"
 echo "results in $PREFIX/results"
 
 echo "\ntesting..."

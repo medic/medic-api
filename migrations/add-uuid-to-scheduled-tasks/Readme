@@ -51,7 +51,7 @@ Backup:
 
 Run the bulk updates:
 
-  node run.js | tee -a results 
+  node add-uuid-to-scheduled-tasks.js | tee -a results 
 
 Test:
 
