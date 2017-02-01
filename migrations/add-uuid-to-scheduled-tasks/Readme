@@ -13,10 +13,24 @@ Environment Variables:
   COUCH_URL The URL to the CouchDB to update
             e.g. http://admin:secret@localhost:5984
 
+Install:
+
+  Add a new design doc and view:
+
+    export COUCH_URL=http://admin:secret@localhost:5984 && \
+    curl -H 'content-type:application/json' -d@design-doc.json $COUCH_URL/medic
+
+Backup:
+
+  You should backup your data before applying bulk edits.  Copy your database
+  or backup your data some other way. For example:
+
+    ddoc='_design/migrations-add-uuid-to-scheduled-tasks'
+    view='scheduled-tasks-no-uuids'
+    curl $COUCH_URL/medic/$ddoc/_view/$view?include_docs=true | gzip > backup.json.gz
+
 Run:
 
-  export COUCH_URL=http://admin:secret@localhost:5984 && \
-  curl -H 'content-type:application/json' -d@design-doc.json $COUCH_URL/medic && \
   node run.js > results
 
 Test:
@@ -26,4 +40,12 @@ Test:
     ddoc='_design/migrations-add-uuid-to-scheduled-tasks'
     view='scheduled-tasks-no-uuids'
     curl -s $COUCH_URL/medic/$ddoc/_view/$view | head | grep total_rows
+
+Cleanup:
+
+  Delete the design doc:
+
+    ddoc='_design/migrations-add-uuid-to-scheduled-tasks'
+    rev=`curl $COUCH_URL/medic/$ddoc | jq --raw-output .rev`
+    curl -X DELETE $COUCH_URL/medic/$ddoc?rev=$rev
 
