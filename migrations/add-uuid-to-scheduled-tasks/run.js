@@ -34,7 +34,7 @@ if (process.env.COUCH_URL) {
     console.warn('using unencrypted protocol: http');
   }
 } else {
-  console.log("Define COUCH_URL");
+  console.error("Define COUCH_URL");
   process.exit();
 }
 
@@ -85,6 +85,7 @@ var bulkUpdate = function(body, callback) {
     res.on('data', function (chunk) {
       console.log(chunk);
     });
+    res.on('end', callback);
     res.on('error', callback);
   });
   req.on('error', callback);
@@ -106,7 +107,7 @@ var processViewData = function(callback) {
     res.on('end', function() {
       var body = JSON.parse(resBody);
       if (body.total_rows === 0) {
-        // done processing view results
+        console.error('done processing view results');
         return callback();
       }
       bulkUpdate(processData(body), function(e) {
