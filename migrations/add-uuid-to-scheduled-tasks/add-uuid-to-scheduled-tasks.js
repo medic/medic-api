@@ -46,7 +46,8 @@ var isObject = function (obj) {
 var processData = function(input) {
   // prepare for bulk update
   var data = typeof input  === 'string' ? JSON.parse(input ) : input,
-      ret = {docs: []};
+      ret = {docs: []},
+      now = new Date();
   if (data.docs) {
     data = data.docs;
   } else if (data.rows) {
@@ -64,7 +65,7 @@ var processData = function(input) {
     doc.scheduled_tasks.forEach(function(task) {
       task.messages.forEach(function(msg) {
         stats.messages++;
-        if (!msg.uuid) {
+        if (!msg.uuid && (now.valueOf() < new Date(task.due).valueOf())) {
           msg.uuid = uuid.v4();
           stats.changes++;
         }
