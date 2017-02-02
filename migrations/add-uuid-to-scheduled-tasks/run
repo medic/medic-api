@@ -1,0 +1,48 @@
+#!/bin/sh
+
+set -e
+set -o pipefail
+
+PREFIX="${PREFIX-.}"
+CURL='curl -sS --fail --compressed'
+CURLJ="$CURL -H content-type:application/json"
+DDOC='_design/migrations-add-uuid-to-scheduled-tasks'
+VIEW='scheduled-tasks-no-uuids'
+TS='date -u +%Y-%m-%dT%H:%M:%SZ'
+BACKUP="$PREFIX/backup-`$TS`.json.gz"
+
+if [ -z $COUCH_URL ]; then
+  echo "Define COUCH_URL"
+  exit 1
+fi
+
+if [ ! -d "$PREFIX" ]; then
+  echo "PREFIX does not exist: $PREFIX"
+  exit 1
+fi
+
+if [ ! -z "$DEBUG" ]; then
+  set -x
+fi
+
+echo "\ninstalling design doc..."
+$CURLJ -d@design-doc.json "$COUCH_URL/medic"
+
+echo "\nbacking up view data..."
+$CURL "$COUCH_URL/medic/$DDOC/_view/$VIEW?include_docs=true" | \
+  gzip > "$BACKUP"
+echo "saved in $BACKUP"
+
+echo "\nupdating data..."
+node add-uuid-to-scheduled-tasks.js | tee -a "$PREFIX/results"
+echo "results in $PREFIX/results"
+
+echo "\ntesting..."
+$CURL "$COUCH_URL/medic/$DDOC/_view/$VIEW" | \
+  head | grep 'total_rows":0,'
+
+echo "\nremoving design doc..."
+REV=`$CURL $COUCH_URL/medic/$DDOC | jq --raw-output ._rev`
+$CURL -X DELETE $COUCH_URL/medic/$DDOC?rev=$REV
+
+echo "\nmigration complete!"
