@@ -4,7 +4,7 @@ var migrate = function() {
   return utils.runMigration('create-patient-contacts');
 };
 
-describe.only('create-patient-contacts migration', function() {
+describe('create-patient-contacts migration', function() {
   afterEach(function() {
     return utils.tearDown();
   });
