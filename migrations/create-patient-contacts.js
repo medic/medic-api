@@ -23,7 +23,7 @@ var filterThoseWithExistingContacts = function(batch, callback) {
 };
 
 var batchCreatePatientContacts = function(batch, callback) {
-  process.stdout.write('Of ' + batch.length + ' potential patients');
+  process.stdout.write('Of ' + batch.length + ' potential patients ');
 
   filterThoseWithExistingContacts(batch, function(filteredBatch) {
     process.stdout.write(filteredBatch.length + ' do not have a contact.');
