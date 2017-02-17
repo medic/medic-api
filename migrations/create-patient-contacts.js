@@ -23,16 +23,16 @@ var filterThoseWithExistingContacts = function(batch, callback) {
 };
 
 var batchCreatePatientContacts = function(batch, callback) {
-  process.stdout.write('Of ' + batch.length + ' registered patients… ');
+  process.stdout.write('Of ' + batch.length + ' potential patients');
 
   filterThoseWithExistingContacts(batch, function(filteredBatch) {
-    process.stdout.write(filteredBatch.length + ' need a contact. ');
+    process.stdout.write(filteredBatch.length + ' do not have a contact.');
     if (filteredBatch.length === 0) {
       process.stdout.write('\n');
       return callback();
     }
 
-    process.stdout.write('Getting registrations… ');
+    process.stdout.write('Getting registrations.. ');
 
     var registrationIdsToConsider = _.flatten(_.pluck(filteredBatch, 1));
 
@@ -43,6 +43,8 @@ var batchCreatePatientContacts = function(batch, callback) {
       if (err) {
         return callback(err);
       }
+
+      console.log(registrationIdsToConsider);
 
       var uniqueValidRegistrations = _.chain(results.rows)
         .pluck('doc')
@@ -57,7 +59,14 @@ var batchCreatePatientContacts = function(batch, callback) {
         })
         .value();
 
-      process.stdout.write('and parents… ');
+      if (!uniqueValidRegistrations.length) {
+        console.log('no new patient registrations in this batch');
+        return callback();
+      } else {
+        process.stdout.write(uniqueValidRegistrations.length + ' new patient registrations.. ');
+      }
+
+      process.stdout.write('Getting parents.. ');
 
       var contactPhoneNumbers = _.chain(uniqueValidRegistrations)
         .pluck('from')
@@ -102,7 +111,9 @@ var batchCreatePatientContacts = function(batch, callback) {
           return patient;
         });
 
-        process.stdout.write('storing patient contacts… ');
+        console.log(patientPersons);
+
+        process.stdout.write('Storing ' + patientPersons.length + ' new patient contacts.. ');
 
         db.medic.bulk({docs: patientPersons}, function(err, results) {
           if (err) {
