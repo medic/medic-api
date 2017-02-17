@@ -26,7 +26,7 @@ var batchCreatePatientContacts = function(batch, callback) {
   process.stdout.write('Of ' + batch.length + ' potential patients ');
 
   filterThoseWithExistingContacts(batch, function(filteredBatch) {
-    process.stdout.write(filteredBatch.length + ' do not have a contact.');
+    process.stdout.write(filteredBatch.length + ' do not have a contact. ');
     if (filteredBatch.length === 0) {
       process.stdout.write('\n');
       return callback();
@@ -43,8 +43,6 @@ var batchCreatePatientContacts = function(batch, callback) {
       if (err) {
         return callback(err);
       }
-
-      console.log(registrationIdsToConsider);
 
       var uniqueValidRegistrations = _.chain(results.rows)
         .pluck('doc')
@@ -97,8 +95,9 @@ var batchCreatePatientContacts = function(batch, callback) {
           var contact = contactForPhoneNumber[registration.from];
           // create a new patient with this patient_id
           var patient = {
-            // TODO: Marc is going to work out if we need to look in other places as well
-            name: registration.fields.patient_name,
+            // TODO: Marc is working out the full list of these alternates
+            name: registration.fields.patient_name ||
+                  registration.fields.full_name,
             parent: contact && contact.parent,
             reported_date: registration.reported_date,
             type: 'person',
@@ -110,8 +109,6 @@ var batchCreatePatientContacts = function(batch, callback) {
           }
           return patient;
         });
-
-        console.log(patientPersons);
 
         process.stdout.write('Storing ' + patientPersons.length + ' new patient contacts.. ');
 
