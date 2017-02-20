@@ -4,7 +4,7 @@ var _ = require('underscore'),
 
 var BATCH_SIZE = 100;
 
-var filterThoseWithExistingContacts = function(batch, callback) {
+var registrationIdsWithNoPatientContacts = function(batch, callback) {
   db.medic.view('medic', 'patient_by_patient_shortcode_id', {
       keys: batch.map(function(row) {
         return row[0];
@@ -16,25 +16,33 @@ var filterThoseWithExistingContacts = function(batch, callback) {
 
       var existingContactShortcodes = _.pluck(results.rows, 'key');
 
-      callback(batch.filter(function(row) {
-        return !_.contains(existingContactShortcodes, row[0]);
-      }));
+      var registrationIdsToConsider = _.chain(batch)
+        .filter(function(row) {
+          return !_.contains(existingContactShortcodes, row[0]);
+        })
+        .pluck(1)
+        .flatten()
+        .value();
+
+      callback(null, registrationIdsToConsider);
     });
 };
 
 var batchCreatePatientContacts = function(batch, callback) {
   process.stdout.write('Of ' + batch.length + ' potential patients ');
 
-  filterThoseWithExistingContacts(batch, function(filteredBatch) {
-    process.stdout.write(filteredBatch.length + ' do not have a contact. ');
-    if (filteredBatch.length === 0) {
+  registrationIdsWithNoPatientContacts(batch, function(err, registrationIdsToConsider) {
+    if (err) {
+      return callback(err);
+    }
+
+    process.stdout.write(registrationIdsToConsider.length + ' do not have a contact. ');
+    if (registrationIdsToConsider.length === 0) {
       process.stdout.write('\n');
       return callback();
     }
 
     process.stdout.write('Getting registrations.. ');
-
-    var registrationIdsToConsider = _.flatten(_.pluck(filteredBatch, 1));
 
     db.medic.fetch({
       keys: registrationIdsToConsider,
@@ -60,11 +68,10 @@ var batchCreatePatientContacts = function(batch, callback) {
       if (!uniqueValidRegistrations.length) {
         console.log('no new patient registrations in this batch');
         return callback();
-      } else {
-        process.stdout.write(uniqueValidRegistrations.length + ' new patient registrations.. ');
       }
 
-      process.stdout.write('Getting parents.. ');
+      process.stdout.write(uniqueValidRegistrations.length +
+                           ' new patient registrations.. Getting parents.. ');
 
       var contactPhoneNumbers = _.chain(uniqueValidRegistrations)
         .pluck('from')
@@ -125,7 +132,7 @@ var batchCreatePatientContacts = function(batch, callback) {
             return callback(new Error('Bulk create errors: ' + JSON.stringify(errors)));
           }
 
-          console.log('DONE');
+          console.log('batch DONE');
           callback();
         });
       });
@@ -158,14 +165,17 @@ module.exports = {
         }, {})
       );
 
-      console.log('There are ' +
-                  registrationsForPatientShortcode.length +
-                  ' patients with registrations');
+      var progressCount = 0;
+      var total = registrationsForPatientShortcode.length;
+
+      console.log('There are ' + total + ' patients with registrations');
 
       async.doWhilst(
         function(callback) {
           var batch = registrationsForPatientShortcode.splice(0, BATCH_SIZE);
+          progressCount += BATCH_SIZE;
 
+          process.stdout.write('[' + progressCount + '/' + total + '] ');
           batchCreatePatientContacts(batch, callback);
         },
         function() {
