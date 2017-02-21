@@ -1,5 +1,6 @@
 var path = require('path'),
     url = require('url'),
+    PouchDB = require('pouchdb'),
     nano = require('nano');
 
 var couchUrl = process.env.COUCH_URL;
@@ -38,6 +39,11 @@ if (couchUrl) {
     db: dbName,
     auditDb: auditDbName,
     ddoc: 'medic'
+  };
+
+  module.exports.pouchdb = {
+    medic: new PouchDB(couchUrl),
+    audit: new PouchDB(couchUrl + '-audit')
   };
 
   if (parsedUrl.auth) {

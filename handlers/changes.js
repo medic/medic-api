@@ -33,54 +33,45 @@ var getDepth = function(userCtx) {
   return depth;
 };
 
-var bindSubjectIds = function(feed, callback) {
-  auth.getFacilityId(feed.req, feed.userCtx, function(err, facilityId) {
-    if (err) {
-      return callback(err);
-    }
-    if (!facilityId) {
-      feed.subjectIds = [];
-      return callback();
-    }
-    feed.facilityId = facilityId;
-    auth.getContactId(feed.userCtx, function(err, contactId) {
-      if (err) {
-        return callback(err);
+var bindSubjectIds = function(feed) {
+  return auth.getFacilityId(feed.req, feed.userCtx)
+    .then(function(facilityId) {
+      if (!facilityId) {
+        feed.subjectIds = [];
+        return;
       }
-      feed.contactId = contactId;
-
-      var keys = [];
-      var depth = getDepth(feed.userCtx);
-      if (depth >= 0) {
-        for (var i = 0; i <= depth; i++) {
-          keys.push([ facilityId, i ]);
-        }
-      } else {
-        // no configured depth limit
-        keys.push([ facilityId ]);
-      }
-
-      db.medic.view('medic', 'contacts_by_depth', { keys: keys }, function(err, result) {
-        if (err) {
-          return callback(err);
-        }
-        var subjectIds = [];
-        result.rows.forEach(function(row) {
-          subjectIds.push(row.id);
-          if (row.value) {
-            subjectIds.push(row.value);
+      feed.facilityId = facilityId;
+      return auth.getContactId(feed.userCtx)
+        .then(function(contactId) {
+          feed.contactId = contactId;
+          var keys = [];
+          var depth = getDepth(feed.userCtx);
+          if (depth >= 0) {
+            for (var i = 0; i <= depth; i++) {
+              keys.push([ facilityId, i ]);
+            }
+          } else {
+            // no configured depth limit
+            keys.push([ facilityId ]);
           }
+          return db.pouchdb.medic.query('medic/contacts_by_depth', { keys: keys });
+        })
+        .then(function(result) {
+          var subjectIds = [];
+          result.rows.forEach(function(row) {
+            subjectIds.push(row.id);
+            if (row.value) {
+              subjectIds.push(row.value);
+            }
+          });
+          subjectIds.push(ALL_KEY);
+          if (config.get('district_admins_access_unallocated_messages') &&
+              auth.hasAllPermissions(feed.userCtx, 'can_view_unallocated_data_records')) {
+            subjectIds.push(UNASSIGNED_KEY);
+          }
+          feed.subjectIds = subjectIds;
         });
-        subjectIds.push(ALL_KEY);
-        if (config.get('district_admins_access_unallocated_messages') &&
-            auth.hasAllPermissions(feed.userCtx, 'can_view_unallocated_data_records')) {
-          subjectIds.push(UNASSIGNED_KEY);
-        }
-        feed.subjectIds = subjectIds;
-        callback();
-      });
     });
-  });
 };
 
 /**
@@ -99,22 +90,19 @@ var isSensitive = function(feed, subject, submitter) {
   return feed.subjectIds.indexOf(submitter) === -1;
 };
 
-var bindValidatedDocIds = function(feed, callback) {
-  db.medic.view('medic', 'docs_by_replication_key', { keys: feed.subjectIds }, function(err, viewResult) {
-    if (err) {
-      return callback(err);
-    }
-    feed.validatedIds = viewResult.rows.reduce(function(ids, row) {
-      if (!isSensitive(feed, row.key, row.value.submitter)) {
-        ids.push(row.id);
-      }
-      return ids;
-    }, [ '_design/medic-client', 'org.couchdb.user:' + feed.userCtx.name ]);
-    callback();
-  });
+var bindValidatedDocIds = function(feed) {
+  return db.medic.pouchdb.query('medic/docs_by_replication_key', { keys: feed.subjectIds })
+    .then(function(result) {
+      feed.validatedIds = result.rows.reduce(function(ids, row) {
+        if (!isSensitive(feed, row.key, row.value.submitter)) {
+          ids.push(row.id);
+        }
+        return ids;
+      }, [ '_design/medic-client', 'org.couchdb.user:' + feed.userCtx.name ]);
+    });
 };
 
-var bindRequestedIds = function(feed, callback) {
+var bindRequestedIds = function(feed) {
   var ids = [];
   if (feed.req.body && feed.req.body.doc_ids) {
     // POST request
@@ -124,11 +112,10 @@ var bindRequestedIds = function(feed, callback) {
     try {
       ids = JSON.parse(feed.req.query.doc_ids);
     } catch(e) {
-      return callback({ code: 400, message: 'Invalid doc_ids param' });
+      throw new Error({ code: 400, message: 'Invalid doc_ids param' });
     }
   }
   feed.requestedIds = ids;
-  return callback();
 };
 
 var defibrillator = function(feed) {
@@ -156,54 +143,46 @@ var cleanUp = function(feed) {
     continuousFeeds.splice(index, 1);
   }
   if (feed.changesReq) {
-    feed.changesReq.abort();
+    feed.changesReq.cancel();
   }
 };
 
 var getChanges = function(feed) {
-  // we cannot call 'changes' in nano because it only uses GET requests and
-  // our query string might be too long for GET
-  feed.changesReq = db.request({
-    db: db.settings.db,
-    path: '_changes',
-    qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
-    body: { doc_ids: _.union(feed.requestedIds, feed.validatedIds) },
-    method: 'POST'
-  }, function(err, changes) {
-    if (err) {
+  var options = _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter');
+  options.live = true;
+  options.doc_ids = _.union(feed.requestedIds, feed.validatedIds);
+  feed.changesReq = db.pouchdb.medic.changes(options)
+    .on('change', function(changes) {
+      if (!changes || !changes.results) {
+        // See: https://github.com/medic/medic-webapp/issues/3099
+        // This should never happen, but apparently it does sometimes.
+        // Attempting to log out the response usefully to see what's occuring
+        var malformedChangesError = 'No _changes error, but malformed response: ';
+        var printableChanges = JSON.stringify(changes);
+        console.error(malformedChangesError, printableChanges);
+        feed.res.write(error(503, malformedChangesError + printableChanges));
+      } else {
+        prepareResponse(feed, changes);
+      }
+      feed.res.end();
+      cleanUp(feed);
+    })
+    .on('error', function() {
       feed.res.write(error(503, 'Error processing your changes'));
-    } else if (!changes || !changes.results) {
-      // See: https://github.com/medic/medic-webapp/issues/3099
-      // This should never happen, but apparently it does sometimes.
-      // Attempting to log out the response usefully to see what's occuring
-      var malformedChangesError = 'No _changes error, but malformed response: ';
-      var printableChanges = JSON.stringify(changes);
-      console.error(malformedChangesError, printableChanges);
-      feed.res.write(error(503, malformedChangesError + printableChanges));
-    } else {
-      prepareResponse(feed, changes);
-    }
-    feed.res.end();
-    cleanUp(feed);
+      feed.res.end();
+      cleanUp(feed);
+    });
+};
+
+var bindServerIds = function(feed) {
+  return bindSubjectIds(feed).then(function() {
+    return bindValidatedDocIds(feed);
   });
 };
 
-var bindServerIds = function(feed, callback) {
-  bindSubjectIds(feed, function(err) {
-    if (err) {
-      return callback(err);
-    }
-    bindValidatedDocIds(feed, callback);
-  });
-};
-
-var initFeed = function(feed, callback) {
-  bindRequestedIds(feed, function(err) {
-    if (err) {
-      return callback(err);
-    }
-    bindServerIds(feed, callback);
-  });
+var initFeed = function(feed) {
+  bindRequestedIds(feed);
+  return bindServerIds(feed);
 };
 
 // returns if it is true that for any document in the feed the user
@@ -324,59 +303,66 @@ var init = function(since) {
     feed: 'longpoll',
     include_docs: true
   };
-  db.medic.changes(options, function(err, changes) {
-    if (!err) {
+  db.pouchdb.medic.changes(options)
+    .on('change', function(changes) {
       updateFeeds(changes);
-    }
-    // use setTimeout to break recursion so stack doesn't blow out
-    setTimeout(function() {
-      init(changes.last_seq);
-    }, 1000);
-  });
+      setTimeout(function() {
+        init(changes.last_seq);
+      }, 1000);
+    })
+    .on('error', function(err) {
+      console.error('Error watching for db changes', err);
+      setTimeout(function() {
+        init(since);
+      }, 1000);
+    });
 };
 
 module.exports = {
   request: function(proxy, req, res) {
+    console.log('0');
     if (!inited) {
       init();
     }
-    auth.getUserCtx(req, function(err, userCtx) {
-      if (err) {
-        return serverUtils.error(err, req, res);
-      }
+    console.log('1');
+    auth.getUserCtx(req)
+      .then(function(userCtx) {
+        console.log('2');
 
-      if (req.query.feed === 'longpoll' ||
-          req.query.feed === 'continuous' ||
-          req.query.feed === 'eventsource') {
-        // Disable nginx proxy buffering to allow hearbeats for long-running feeds
-        res.setHeader('X-Accel-Buffering', 'no');
-      }
+        if (req.query.feed === 'longpoll' ||
+            req.query.feed === 'continuous' ||
+            req.query.feed === 'eventsource') {
+          // Disable nginx proxy buffering to allow hearbeats for long-running feeds
+          res.setHeader('X-Accel-Buffering', 'no');
+        }
 
-      if (auth.hasAllPermissions(userCtx, 'can_access_directly')) {
-        proxy.web(req, res);
-      } else {
-        var feed = {
-          req: req,
-          res: res,
-          userCtx: userCtx
-        };
-        req.on('close', function() {
-          cleanUp(feed);
-        });
-        initFeed(feed, function(err) {
-          if (err) {
-            return serverUtils.error(err, req, res);
-          }
-          if (req.query.feed === 'longpoll') {
-            // watch for newly added docs
-            continuousFeeds.push(feed);
-          }
-          res.type('json');
-          defibrillator(feed);
-          getChanges(feed);
-        });
-      }
-    });
+        if (auth.hasAllPermissions(userCtx, 'can_access_directly')) {
+          console.log('3');
+
+          proxy.web(req, res);
+        } else {
+          var feed = {
+            req: req,
+            res: res,
+            userCtx: userCtx
+          };
+          req.on('close', function() {
+            cleanUp(feed);
+          });
+          initFeed(feed).then(function() {
+            if (req.query.feed === 'longpoll') {
+              // watch for newly added docs
+              continuousFeeds.push(feed);
+            }
+            res.type('json');
+            defibrillator(feed);
+            getChanges(feed);
+          });
+        }
+      })
+      .catch(function(err) {
+        serverUtils.error(err, req, res);
+      });
   },
   _getReplicationKey: getReplicationKey // used for testing
 };

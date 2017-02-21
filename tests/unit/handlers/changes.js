@@ -5,11 +5,20 @@ var sinon = require('sinon'),
     serverUtils = require('../../../server-utils'),
     handler = require('../../../handlers/changes'),
     db = require('../../../db'),
-    DDOC_ID = '_design/medic-client',
-    changes;
+    DDOC_ID = '_design/medic-client';
 
 exports.setUp = function(callback) {
-  changes = sinon.stub(db.medic, 'changes');
+  db.pouchdb = {
+    medic: {
+      changes: function() {
+        return { on: function() {
+          return {
+            on: function() {}
+          };
+        } };
+      }
+    }
+  };
   callback();
 };
 
@@ -22,10 +31,10 @@ exports.tearDown = function (callback) {
     serverUtils.serverError,
     serverUtils.error,
     config.get,
-    console.error,
-    db.request,
-    db.medic.view,
-    db.medic.changes
+    console.error
+    // db.request,
+    // db.medic.view,
+    // changes
   );
   handler._reset();
   callback();
@@ -38,8 +47,8 @@ exports['allows "can_access_directly" users direct access'] = function(test) {
   var testRes = 'fake response';
 
   var userCtx = 'fake userCtx';
-  sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
-  sinon.stub(auth, 'hasAllPermissions', function() { return true; });
+  sinon.stub(auth, 'getUserCtx').returns(Promise.resolve(userCtx));
+  sinon.stub(auth, 'hasAllPermissions').returns(true);
 
   var proxy = {web: function(req, res) {
     test.equals(req, testReq);
@@ -71,10 +80,10 @@ exports['filters the changes to relevant ones'] = function(test) {
     }
   };
 
-  sinon.stub(auth, 'getUserCtx').callsArgWith(1, null, userCtx);
+  sinon.stub(auth, 'getUserCtx').returns(Promise.resolve(userCtx));
   sinon.stub(auth, 'hasAllPermissions').returns(false);
-  sinon.stub(auth, 'getFacilityId').callsArgWith(2, null, 'facilityId');
-  sinon.stub(auth, 'getContactId').callsArgWith(1, null, 'contactId');
+  sinon.stub(auth, 'getFacilityId').returns(Promise.resolve('facilityId'));
+  sinon.stub(auth, 'getContactId').returns(Promise.resolve('contactId'));
   sinon.stub(config, 'get').returns(false);
 
   // change log

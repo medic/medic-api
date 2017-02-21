@@ -71,30 +71,49 @@ module.exports = {
   },
 
   getUserCtx: function(req, callback) {
-    get('/_session', req.headers, function(err, auth) {
-      if (err) {
-        return callback({ code: 401, message: 'Not logged in', err: err });
-      }
-      if (auth && auth.userCtx && auth.userCtx.name) {
-        return callback(null, auth.userCtx);
-      }
-      callback({ code: 401, message: 'Not logged in' });
+    return new Promise(function(resolve, reject) {
+      get('/_session', req.headers, function(err, auth) {
+        if (err) {
+          return (callback || reject)({ code: 401, message: 'Not logged in', err: err });
+        }
+        if (auth && auth.userCtx && auth.userCtx.name) {
+          if (callback) {
+            return callback(null, auth.userCtx);
+          }
+          return resolve(auth.userCtx);
+        }
+        (callback || reject)({ code: 401, message: 'Not logged in' });
+      });
     });
   },
 
   getFacilityId: function(req, userCtx, callback) {
-    var url = '/_users/org.couchdb.user:' + userCtx.name;
-    get(url, req.headers, function(err, user) {
-      if (err) {
-        return callback({ code: 500, message: err });
-      }
-      callback(null, user.facility_id);
+    return new Promise(function(resolve, reject) {
+      var url = '/_users/org.couchdb.user:' + userCtx.name;
+      get(url, req.headers, function(err, user) {
+        if (err) {
+          return (callback || reject)({ code: 500, message: err });
+        }
+        if (callback) {
+          return callback(null, user.facility_id);
+        }
+        resolve(user.facility_id);
+      });
     });
   },
 
   getContactId: function(userCtx, callback) {
-    db.medic.get('org.couchdb.user:' + userCtx.name, function(err, user) {
-      callback(err, user && user.contact_id);
+    return new Promise(function(resolve, reject) {
+      db.medic.get('org.couchdb.user:' + userCtx.name, function(err, user) {
+        if (err) {
+          return (callback || reject)(err);
+        }
+        var result = user && user.contact_id;
+        if (callback) {
+          return callback(null, result);
+        }
+        resolve(result);
+      });
     });
   },
 
