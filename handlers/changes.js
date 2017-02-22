@@ -171,7 +171,8 @@ var getChanges = function(feed) {
     method: 'POST'
   }, function(err, changes) {
     if (feed.res.finished) {
-      // don't write to the response if it has already ended
+      // Don't write to the response if it has already ended. The change
+      // will be picked up in the subsequent changes request.
       return;
     }
     cleanUp(feed);
