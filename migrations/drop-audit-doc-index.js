@@ -1,3 +1,7 @@
+/**
+Changes ids for medic-audit docs to be the same as the corresponding audited medic doc.
+Removes the view that was required to fetch audit docs, since now they can be fetched by id.
+*/
 var db = require('../db'),
     async = require('async'),
     _ = require('underscore'),
