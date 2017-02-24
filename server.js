@@ -191,33 +191,39 @@ app.get('/api/upcoming-due-dates', function(req, res) {
   handleAnalyticsCall(req, res, upcomingDueDates);
 });
 
-app.get('/api/sms', function(req, res) {
-  auth.check(req, 'can_access_gateway_api', null, function(err) {
-    if (err) {
-      return serverUtils.error(err, req, res);
-    }
-    smsGateway.get(function(err, obj) {
+(function() {
+  var handleSms_GET = function(req, res) {
+    auth.check(req, 'can_access_gateway_api', null, function(err) {
       if (err) {
-        return serverUtils.error(err, res);
+        return serverUtils.error(err, req, res);
       }
-      res.json(obj);
+      smsGateway.get(function(err, obj) {
+        if (err) {
+          return serverUtils.error(err, res);
+        }
+        res.json(obj);
+      });
     });
-  });
-});
+  };
+  app.get('/api/sms', handleSms_GET);
+  app.get('/api/sms/', handleSms_GET);
 
-app.post('/api/sms', jsonParser, function(req, res) {
-  auth.check(req, 'can_access_gateway_api', null, function(err) {
-    if (err) {
-      return serverUtils.error(err, req, res);
-    }
-    smsGateway.post(req, function(err, obj) {
+  var handleSms_POST = function(req, res) {
+    auth.check(req, 'can_access_gateway_api', null, function(err) {
       if (err) {
-        return serverUtils.error(err, res);
+        return serverUtils.error(err, req, res);
       }
-      res.json(obj);
+      smsGateway.post(req, function(err, obj) {
+        if (err) {
+          return serverUtils.error(err, res);
+        }
+        res.json(obj);
+      });
     });
-  });
-});
+  };
+  app.post('/api/sms', jsonParser, handleSms_POST);
+  app.post('/api/sms/', jsonParser, handleSms_POST);
+}());
 
 app.get('/api/high-risk', function(req, res) {
   handleAnalyticsCall(req, res, highRisk);
