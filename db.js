@@ -100,6 +100,20 @@ if (couchUrl) {
                         module.exports.settings.ddoc);
     module.exports.request({ path: uri, method: 'put', body: updates }, cb);
   };
+  module.exports.getCouchDbVersion = function(cb) {
+    db.request({}, function(err, body) {
+      if (err) {
+        return cb(err);
+      }
+      var semvers = body.version && body.version.match(/(\d+)\.(\d+)\.(\d+)/);
+
+      cb(null, {
+        major: semvers[1],
+        minor: semvers[2],
+        patch: semvers[3]
+      });
+    });
+  };
 
   module.exports.sanitizeResponse = sanitizeResponse;
 } else if (process.env.UNIT_TEST_ENV) {

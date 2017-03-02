@@ -651,17 +651,9 @@ proxyForAuditing.on('error', function(err, req, res) {
   serverUtils.serverError(JSON.stringify(err), req, res);
 });
 
-var couchdbCheck = function(callback) {
-  db.request({}, function(err, body) {
-    if (err) {
-      callback(err);
-    }
-
-    var semvers = body.version && body.version.match(/(\d+)\.\d+\.\d+/);
-    if (!semvers || semvers[1] !== '2') {
-      callback(new Error('Only CouchDB 2.x is supported, v' + body.version + ' detected.'));
-    }
-
+var couchDbVersionCheck = function(callback) {
+  db.getCouchDbVersion(function(err, version) {
+    console.log('CouchDB Version:', version);
     callback();
   });
 };
@@ -673,8 +665,7 @@ var asyncLog = function(message) {
 };
 
 async.series([
-  couchdbCheck,
-  asyncLog('CouchDB version check successful'),
+  couchDbVersionCheck,
   ddocExtraction.run,
   asyncLog('DDoc extraction completed successfully'),
   config.load,
