@@ -4,7 +4,7 @@ var path = require('path'),
     request = require('request');
 
 var couchUrl = process.env.COUCH_URL;
-var ftiURL = process.env.FTI_URL;
+var luceneUrl = process.env.LUCENE_URL;
 
 var sanitizeResponse = function(err, body, headers, callback) {
   // Remove the `uri` and `statusCode` headers passed in from nano.  This
@@ -28,7 +28,8 @@ if (couchUrl) {
   var auditDbName = dbName + '-audit';
   var db = nano(baseUrl);
 
-  ftiURL = ftiURL || baseUrl.replace('5984', '5986');
+  // Default configuration runs lucene on the same server at port 5985
+  luceneUrl = luceneUrl || baseUrl.replace('5984', '5985');
 
   module.exports = db;
   module.exports.medic = db.use(dbName);
@@ -51,8 +52,10 @@ if (couchUrl) {
   }
 
   module.exports.fti = function(index, data, cb) {
-    var url = ftiURL + '/' + path.join('_fti/local', module.exports.settings.db,
-                                       '_design', module.exports.settings.ddoc, index);
+    var url = luceneUrl + '/' + path.join('local', module.exports.settings.db,
+                                          '_design', module.exports.settings.ddoc,
+                                          index);
+
     if (data.q && !data.limit) {
       data.limit = 1000;
     }
