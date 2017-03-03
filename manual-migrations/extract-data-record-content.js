@@ -2,7 +2,8 @@ var _ = require('underscore'),
     db = require('../db'),
     async = require('async');
 
-var BATCH_SIZE = 100;
+var VIEW_BATCH_SIZE = 10000;
+var DOC_BATCH_SIZE = 100;
 var PERCENT_REPORT_CHUNKS = 10;
 
 // Copied from https://github.com/node-browser-compat/btoa/blob/master/index.js
@@ -40,63 +41,99 @@ var incrementPercentTarget = function(percentTarget) {
 
 module.exports = {
   name: 'extract-data-record-content',
-  created: new Date(2017, 0, 6),
-  run: function(callback) {
-    console.log('Finding data_records...');
-    db.medic.view('medic', 'data_records', function(err, body) {
-      if (err) {
-        return callback(err);
-      }
+  created: new Date(2017, 2, 3),
+  run: function(migrationCallback) {
+    var totalRecords;
+    var processed = 0;
+    var nextPercentTarget = incrementPercentTarget(0);
 
-      var recordStubs = body.rows;
-      var originalTotal = recordStubs.length;
-      var nextPercentTarget = incrementPercentTarget(0);
-
-      console.log('Migrating up to ' + recordStubs.length + ' rows');
-      process.stdout.write('Working');
-
-      async.doUntil(
-        function(callback) {
-          process.stdout.write('.');
-
-          // Percent indication
-          var completedPercent = 100 - (recordStubs.length / originalTotal) * 100;
-          if (completedPercent >= nextPercentTarget) {
-            process.stdout.write('['+Math.floor(completedPercent)+'%]');
-            nextPercentTarget = incrementPercentTarget(nextPercentTarget);
+    console.log('Finding data records...');
+    async.doUntil(
+      function(viewCallback) {
+        db.medic.view('medic', 'data_records', {
+          skip: processed,
+          limit: VIEW_BATCH_SIZE
+        },
+        function(err, body) {
+          if (err) {
+            return migrationCallback(err);
           }
 
-          var batch = recordStubs.splice(0, BATCH_SIZE);
+          if (!totalRecords) {
+            // First view batch print headers
+            totalRecords = body.total_rows;
+            console.log('Migrating up to ' + totalRecords + ' rows');
+            process.stdout.write('Working');
 
-          db.medic.fetch({keys: _.pluck(batch, 'id')}, function(err, results) {
-            if (err) {
-              return callback(err);
+            if (totalRecords === 0) {
+              // Short-circuit if there is nothing on this server
+              viewCallback();
             }
-            var docs = _.pluck(results.rows, 'doc');
+          } else {
+            process.stdout.write(',');
+          }
 
-            docs = docs.map(attachmentIse).filter(function(i) {
-              return i;
-            });
+          var recordStubs = body.rows;
 
-            if (docs.length === 0) {
-              // The view we're using gets all data records, not just XML ones
-              // so there is a good chance entire batches will be filtered out
-              // TODO: when we upgrade to CouchDB2.0 this is a great place to use
-              //       mango filters to target XML forms better
-              return callback();
-            } else {
-              db.medic.bulk({docs: docs}, callback);
+          async.doUntil(
+            function(docCallback) {
+              process.stdout.write('.');
+
+              var batch = recordStubs.splice(0, DOC_BATCH_SIZE);
+              processed += batch.length;
+
+              // Percent indication
+              var completedPercent = (processed / totalRecords) * 100;
+              if (completedPercent >= nextPercentTarget) {
+                process.stdout.write('[' + Math.floor(completedPercent) + '%]');
+                nextPercentTarget = incrementPercentTarget(nextPercentTarget);
+              }
+
+              db.medic.fetch({keys: _.pluck(batch, 'id')}, function(err, results) {
+                if (err) {
+                  return migrationCallback(err);
+                }
+                var docs = _.pluck(results.rows, 'doc');
+
+                docs = docs.map(attachmentIse).filter(function(i) {
+                  return i;
+                });
+
+                if (docs.length === 0) {
+                  // The view we're using gets all data records, not just XML ones
+                  // so there is a good chance entire batches will be filtered out
+                  // TODO: when we upgrade to CouchDB2.0 this is a great place to use
+                  //       mango filters to target XML forms better
+                  return docCallback();
+                }
+
+                db.medic.bulk({docs: docs}, docCallback);
+              });
+            },
+            function() {
+              return recordStubs.length === 0;
+            },
+            function(err) {
+              if (err) {
+                return migrationCallback(err);
+              }
+
+              return viewCallback();
             }
-          });
-        },
-        function() {
-          return recordStubs.length === 0;
-        },
-        function() {
-          process.stdout.write('\n');
-          return callback();
+          );
+        });
+      },
+      function() {
+        return processed >= totalRecords;
+      },
+      function(err) {
+        if (err) {
+          return migrationCallback(err);
         }
-      );
-    });
+
+        process.stdout.write('\n');
+        return migrationCallback();
+      }
+    );
   }
 };
