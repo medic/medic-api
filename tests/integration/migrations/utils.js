@@ -274,9 +274,23 @@ function _resetDb() {
         console.log('At', new Date(), 'Deleted', dbName, 'got:', arguments);
 
         db.db.create(dbName, function(err) {
-          if(err) { return reject(new Error('Error creating ' + dbName + ': ' + err.message)); }
-          console.log('At', new Date(), 'Re-created ' + dbName);
-          resolve();
+          if(err) {
+            console.log('Could not create directly after deleting, pausing and trying again');
+
+            return setTimeout(function() {
+              db.db.create(dbName, function(err) {
+                if(err) {
+                  return reject(new Error('Error creating ' + dbName + ': ' + err.message));
+                }
+
+                console.log('After a struggle, at', new Date(), 'Re-created ' + dbName);
+                resolve();
+              });
+            }, 10000);
+          } else {
+            console.log('At', new Date(), 'Re-created ' + dbName);
+            resolve();
+          }
         });
       });
     });
