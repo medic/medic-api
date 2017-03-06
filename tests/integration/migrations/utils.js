@@ -268,14 +268,14 @@ function _resetDb() {
   return Promise.all([DB_PREFIX + 'audit', DB_PREFIX + 'medic'].map(function(dbName) {
     return new Promise(function(resolve, reject) {
       db.db.destroy(dbName, function(err) {
-        console.log('Deleted ' + dbName);
         if(err && err.statusCode !== 404) {
           return reject(new Error('Error deleting ' + dbName + ': ' + err.message));
         }
+        console.log('At', new Date(), 'Deleted', dbName, 'got:', arguments);
 
         db.db.create(dbName, function(err) {
           if(err) { return reject(new Error('Error creating ' + dbName + ': ' + err.message)); }
-          console.log('Re-created ' + dbName);
+          console.log('At', new Date(), 'Re-created ' + dbName);
           resolve();
         });
       });
