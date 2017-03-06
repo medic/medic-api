@@ -270,7 +270,7 @@ function _resetDb() {
       db.db.destroy(dbName, function(err) {
         console.log('Deleted ' + dbName);
         if(err && err.statusCode !== 404) {
-          return reject(new Error('Error deleting ' + dbName + ': ' + err.message);
+          return reject(new Error('Error deleting ' + dbName + ': ' + err.message));
         }
 
         db.db.create(dbName, function(err) {
