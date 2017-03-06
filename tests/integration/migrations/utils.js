@@ -275,7 +275,7 @@ function _resetDb() {
 
         db.db.create(dbName, function(err) {
           if(err) {
-            console.log('Could not create directly after deleting, pausing and trying again');
+            console.log('Could not create' , dbName , 'directly after deleting, pausing and trying again');
 
             return setTimeout(function() {
               db.db.create(dbName, function(err) {
@@ -286,7 +286,7 @@ function _resetDb() {
                 console.log('After a struggle, at', new Date(), 'Re-created ' + dbName);
                 resolve();
               });
-            }, 10000);
+            }, 3000);
           } else {
             console.log('At', new Date(), 'Re-created ' + dbName);
             resolve();
