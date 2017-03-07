@@ -9,16 +9,16 @@ module.exports = {
         return callback(err);
       }
 
-      var v2 = version.major === '2';
+      var v1 = version.major === '1';
 
       db.request({
-        db: v2 ?
-          '_node' :
-          '_config',
+        db: v1 ?
+          '_config' :
+          '_node',
         method: 'PUT',
-        path: v2 ?
-          process.env.COUCH_NODE_NAME + '/_config/native_query_servers/erlang' :
-          'native_query_servers/erlang',
+        path: v1 ?
+          'native_query_servers/erlang':
+          process.env.COUCH_NODE_NAME + '/_config/native_query_servers/erlang',
         body: '{couch_native_process, start_link, []}'
       }, function(err) {
         if (err && err.error === 'not_found') {

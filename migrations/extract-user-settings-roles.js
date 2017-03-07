@@ -34,16 +34,16 @@ var getAdmins = function(callback) {
       return callback(err);
     }
 
-    var v2 = version.major === '2';
+    var v1 = version.major === '1';
 
     request.get({
       url: url.format({
         protocol: db.settings.protocol,
         hostname: db.settings.host,
         port: db.settings.port,
-        pathname: v2 ?
-          '_node/' + process.env.COUCH_NODE_NAME + '/_config/admins' :
-          '_config/admins'
+        pathname: v1 ?
+          '_config/admins' :
+          '_node/' + process.env.COUCH_NODE_NAME + '/_config/admins',
       }),
       auth: {
         user: db.settings.username,
