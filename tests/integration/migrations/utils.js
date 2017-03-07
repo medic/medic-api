@@ -255,7 +255,6 @@ function initDb(content) {
           return new Promise(function(resolve, reject) {
             db[dbName].insert(doc, function(err) {
               if(err) { return reject(new Error('Error inserting ' + doc._id + ': ' + err.message)); }
-              console.log('Inserted ' + doc._id);
               resolve();
             });
           });
@@ -271,7 +270,6 @@ function _resetDb() {
         if(err && err.statusCode !== 404) {
           return reject(new Error('Error deleting ' + dbName + ': ' + err.message));
         }
-        console.log('At', new Date(), 'Deleted', dbName, 'got:', arguments);
 
         db.db.create(dbName, function(err) {
           if(err) {
@@ -288,7 +286,6 @@ function _resetDb() {
               });
             }, 3000);
           } else {
-            console.log('At', new Date(), 'Re-created ' + dbName);
             resolve();
           }
         });
