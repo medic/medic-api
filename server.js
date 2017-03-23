@@ -293,7 +293,7 @@ app.all([
 
       res
         .set('Content-Type', format.contentType)
-        .set(`Content-Disposition', 'attachment; filename=${filename}`);
+        .set('Content-Disposition', `attachment; filename=${filename}`);
 
       if (_.isFunction(exportDataResult)) {
         // wants to stream the result back
@@ -613,7 +613,8 @@ app.put(auditPath, audit);
 app.post(auditPath, audit);
 app.delete(auditPath, audit);
 
-app.all('*', proxy.web);
+app.all('*', (req, res) =>
+  proxy.web(req, res));
 
 proxy.on('error', (err, req, res) => serverUtils.serverError(JSON.stringify(err), req, res));
 
