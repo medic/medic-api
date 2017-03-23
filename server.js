@@ -641,6 +641,26 @@ const nodeVersionCheck = callback => {
   }
 };
 
+const envVarsCheck = callback => {
+  const envValueAndExample = [
+    ['COUCH_URL', 'http://admin:pass@localhost:5984/medic'],
+    ['COUCH_NODE_NAME', 'couchdb@localhost']
+  ];
+
+  const failures = [];
+  envValueAndExample.forEach(([envVar, example]) => {
+    if (!process.env[envVar]) {
+      failures.push(`${envVar} must be set. For example: ${envVar}=${example}`);
+    }
+  });
+
+  if (failures.length) {
+    callback('At least one required environment variable was not set:\n' + failures.join('\n'));
+  } else {
+    callback();
+  }
+};
+
 const couchDbVersionCheck = callback =>
   db.getCouchDbVersion((err, version) => {
     console.log('CouchDB Version:', version);
@@ -651,6 +671,7 @@ const asyncLog = message => async.asyncify(() => console.log(message));
 
 async.series([
   nodeVersionCheck,
+  envVarsCheck,
   couchDbVersionCheck,
   ddocExtraction.run,
   asyncLog('DDoc extraction completed successfully'),
