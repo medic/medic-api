@@ -653,17 +653,17 @@ proxyForAuditing.on('error', function(err, req, res) {
 
 const nodeVersionCheck = callback => {
   try {
-    console.log('Node Version:', process.version);
+    const [major, minor, patch] = process.versions.node.split('.').map(Number);
 
-    const version = process.versions.node.match(/(\d)+\.(\d)+\.(\d)+/)[1];
+    console.log(`Node Version: ${major}.${minor}.${patch}`);
 
-    if (Number(version[1] <= 4)) {
+    if (major < 5) {
       // 5 seems to be where the majority of ES6 was added without flags.
       // Seems safeist to not allow api to run
-      callback(new Error(`Node version ${process.version} is not supported`));
+      callback(new Error(`Node version ${major}.${minor}.${patch} is not supported`));
     }
 
-    if (Number(version[1]) < 6 && Number(version[2]) < 10) {
+    if (major < 6 || ( major === 6 && minor < 10)) {
       console.error('This node version may not be supported');
     }
 
@@ -695,6 +695,10 @@ const envVarsCheck = callback => {
 
 const couchDbVersionCheck = callback =>
   db.getCouchDbVersion((err, version) => {
+    if (err) {
+      callback(err);
+    }
+
     console.log('CouchDB Version:', version);
     callback();
   });
