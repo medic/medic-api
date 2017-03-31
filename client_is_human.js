@@ -1,4 +1,4 @@
-var DALVIK_DETECT = new RegExp('^Dalvik/');
+const DALVIK_DETECT = new RegExp('^Dalvik/');
 
 /**
  * Check an incoming request to see if it's from a human browser, or from an
@@ -8,15 +8,15 @@ var DALVIK_DETECT = new RegExp('^Dalvik/');
  * N.B. medic-collect and ODK Collect do not always include a UA:
  * https://github.com/opendatakit/collect/issues/167
  */
-module.exports = function(req) {
-  var ua = req.headers && req.headers['user-agent'];
+module.exports = (req) => {
+  const ua = req.headers && req.headers['user-agent'];
 
   if (!ua) {
     return false;
   }
 
   if (DALVIK_DETECT.test(ua)) {
-    return ua.indexOf('medic.gateway') === -1;
+    return ua.includes('medic.gateway');
   }
 
   return true;
