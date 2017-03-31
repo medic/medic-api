@@ -114,7 +114,7 @@ exports['notLoggedIn redirects to login page for human user'] = function(test) {
 exports['notLoggedIn returns 401 for medic-collect'] = function(test) {
   test.expect(3);
   var writeHead = sinon.stub(res, 'writeHead');
-  req.url = 'someurl'
+  req.url = 'someurl';
   req.headers = { 'user-agent': null };
   serverUtils.notLoggedIn(req, res);
   test.equals(writeHead.callCount, 1);
