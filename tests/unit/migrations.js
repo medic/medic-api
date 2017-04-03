@@ -8,16 +8,6 @@ exports.tearDown = function (callback) {
   callback();
 };
 
-exports['run does nothing if no migrations'] = function(test) {
-  var getLog = sinon.stub(db.medic, 'get').callsArgWith(1, null, { rows: [] });
-  sinon.stub(migrations, 'get').callsArgWith(0, null, []);
-  migrations.run(function(err) {
-    test.equals(err, undefined);
-    test.equals(getLog.callCount, 0);
-    test.done();
-  });
-};
-
 exports['run fails if migration does not have created date'] = function(test) {
   sinon.stub(db.medic, 'get').callsArgWith(1, null, {});
   sinon.stub(migrations, 'get').callsArgWith(0, null, [ { name: 'xyz' } ]);

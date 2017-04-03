@@ -39,7 +39,7 @@ var deleteOldLog = function(oldLog, callback) {
   db.medic.insert(oldLog, callback);
 };
 
-var createLog = function(callback) {
+var createMigrationLog = function(callback) {
   getLogWithView(function(err, oldLog) {
     if (err) {
       return callback(err);
@@ -65,13 +65,13 @@ var createLog = function(callback) {
 
 var getLog = function(callback) {
   db.medic.get(MIGRATION_LOG_ID, function(err, doc) {
-    if (!err) {
-      return callback(null, doc);
+    if (err) {
+      if (err.statusCode === 404) {
+        return createMigrationLog(callback);
+      }
+      return callback(err);
     }
-    if (err.statusCode === 404) {
-      return createLog(callback);
-    }
-    return callback(err);
+    callback(null, doc);
   });
 };
 
@@ -121,14 +121,11 @@ var runMigrations = function(log, migrations, callback) {
 
 module.exports = {
   run: function(callback) {
-    module.exports.get(function(err, migrations) {
+    getLog(function(err, log) {
       if (err) {
         return callback(err);
       }
-      if (!migrations.length) {
-        return callback();
-      }
-      getLog(function(err, log) {
+      module.exports.get(function(err, migrations) {
         if (err) {
           return callback(err);
         }
