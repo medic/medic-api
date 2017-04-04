@@ -1,7 +1,7 @@
 var url = require('url'),
     path = require('path'),
     db = require('./db'),
-    clientIsHuman = require('./client_is_human'),
+    isClientHuman = require('./is-client-human'),
     MEDIC_BASIC_AUTH = 'Basic realm="Medic Mobile Web Services"';
 
 var wantsJSON = function(req) {
@@ -73,7 +73,7 @@ module.exports = {
       return writeJSON(res, 401, 'unauthorized');
     }
     // web access - redirect humans to login page; prompt others for basic auth
-    if (clientIsHuman(req)) {
+    if (isClientHuman(req)) {
       var redirectUrl = url.format({
         pathname: path.join('/', db.settings.db, 'login'),
         query: { redirect: req.url }
