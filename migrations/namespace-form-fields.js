@@ -30,6 +30,8 @@ var namespace = function(docs, callback) {
   console.log('------ namespaced');
   console.log(docs);
 
+  console.log('stub', db.medic.bulk);
+
   db.medic.bulk({ docs : docs }, function(err, result) {
     console.log('done bulk query');
     if (err) {
