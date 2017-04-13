@@ -11,8 +11,6 @@ var async = require('async'),
 var BATCH_SIZE = 100;
 
 var namespace = function(docs, callback) {
-  console.log('-------------- new batch');
-  console.log(docs);
   docs.forEach(function(doc) {
     if (doc.fields || !doc.form) {
       return;
@@ -27,17 +25,8 @@ var namespace = function(docs, callback) {
       delete doc[key];
     });
   });
-  console.log('------ namespaced');
-  console.log(docs);
-
-  console.log('stub', db.medic.bulk);
 
   db.medic.bulk({ docs : docs }, function(err, result) {
-    console.log('done bulk query');
-    if (err) {
-      console.log('Error in bulk edit', err);
-    }
-    console.log('result', result);
     callback(err);
   });
 };
@@ -50,7 +39,6 @@ var runBatch = function(batchSize, skip, callback) {
   };
   db.medic.view('medic', 'data_records', options, function(err, result) {
     if (err) {
-      console.log('Error getting data_records', err);
       return callback(err);
     }
     console.log('        Processing ' + skip + ' to ' + (skip + batchSize) + ' docs of ' + result.total_rows + ' total');
@@ -77,7 +65,6 @@ module.exports = {
           runBatch(batchSize, currentSkip, callback);
         },
         function(keepGoing) {
-          console.log('done batch with skip', currentSkip);
           currentSkip += batchSize;
           return keepGoing;
         },

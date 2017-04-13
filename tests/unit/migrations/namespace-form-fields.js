@@ -5,16 +5,12 @@ var sinon = require('sinon'),
     migration = require('../../../migrations/namespace-form-fields');
 
 exports.tearDown = function (callback) {
-  console.log('-----restore');
-  console.log(db.medic.bulk.isSinonProxy);
   utils.restore(
     db.medic.view,
     db.medic.bulk,
     config.get,
     config.load
   );
-  console.log('-----restoreddd');
-  console.log(db.medic.bulk.isSinonProxy);
   callback();
 };
 
@@ -68,7 +64,6 @@ exports['run does nothing if no data records'] = function(test) {
   sinon.stub(config, 'get').returns({});
   sinon.stub(db.medic, 'bulk').callsArgWith(1, null, null);
   migration.run(function(err) {
-    console.log('whyyyyy');
     test.equals(err, undefined);
     test.equals(getView.callCount, 1);
     test.done();
