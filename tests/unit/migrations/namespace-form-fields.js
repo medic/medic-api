@@ -5,12 +5,16 @@ var sinon = require('sinon'),
     migration = require('../../../migrations/namespace-form-fields');
 
 exports.tearDown = function (callback) {
+  console.log('-----restore');
+  console.log(db.medic.bulk.isSinonProxy);
   utils.restore(
     db.medic.view,
     db.medic.bulk,
     config.get,
     config.load
   );
+  console.log('-----restoreddd');
+  console.log(db.medic.bulk.isSinonProxy);
   callback();
 };
 
@@ -62,7 +66,9 @@ exports['run does nothing if no data records'] = function(test) {
   sinon.stub(config, 'load').callsArg(0);
   var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { total_rows: 0, rows: [] });
   sinon.stub(config, 'get').returns({});
+  sinon.stub(db.medic, 'bulk').callsArgWith(1, null, null);
   migration.run(function(err) {
+    console.log('whyyyyy');
     test.equals(err, undefined);
     test.equals(getView.callCount, 1);
     test.done();
@@ -80,6 +86,7 @@ exports['run does nothing if report already migrated'] = function(test) {
   sinon.stub(config, 'load').callsArg(0);
   var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { total_rows: 1, rows: [ { doc: doc } ] });
   sinon.stub(config, 'get').returns({});
+  sinon.stub(db.medic, 'bulk').callsArgWith(1, null, null);
   migration.run(function(err) {
     test.equals(err, undefined);
     test.equals(getView.callCount, 1);
@@ -96,6 +103,7 @@ exports['run does nothing if no form'] = function(test) {
   sinon.stub(config, 'load').callsArg(0);
   var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { total_rows: 1, rows: [ { doc: doc } ] });
   sinon.stub(config, 'get').returns({});
+  sinon.stub(db.medic, 'bulk').callsArgWith(1, null, null);
   migration.run(function(err) {
     test.equals(err, undefined);
     test.equals(getView.callCount, 1);
