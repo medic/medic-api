@@ -26,7 +26,7 @@ var namespace = function(docs, callback) {
     });
   });
 
-  db.medic.bulk({ docs : docs }, function(err, result) {
+  db.medic.bulk({ docs : docs }, function(err) {
     callback(err);
   });
 };
