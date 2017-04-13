@@ -5,21 +5,19 @@ var sinon = require('sinon'),
     migration = require('../../../migrations/namespace-form-fields');
 
 // Arguments : docArrayForFirstBatch, docArrayForSecondBatch, ...
-var makeStubs = function() {
+var makeStubs = (...viewBatches) => {
+  console.log(viewBatches);
   var getView = sinon.stub(db.medic, 'view');
-  if (arguments.length === 0) {
+  if (viewBatches.length === 0) {
     getView.callsArgWith(3, null,
       {
         total_rows: 0,
         rows: []
       });
   } else {
-    var viewBatches = [];
-    var totalRows = 0;
-    for (var i = 0; i < arguments.length; i++) {
-      viewBatches.push(arguments[i]);
-      totalRows = totalRows + arguments[i].length;
-    }
+    var totalRows = viewBatches.reduce(function(total, batch) {
+      return total + batch.length;
+    }, 0);
     viewBatches.forEach(function(batch, index) {
       getView.onCall(index).callsArgWith(3, null,
         {
