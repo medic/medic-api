@@ -29,6 +29,9 @@ module.exports = {
     if (options.state) {
       viewOptions.key = options.state;
     }
+    if (options.states) {
+      viewOptions.keys = options.states;
+    }
     getTaskMessages(viewOptions, function(err, data) {
       if (err) {
         return callback(err);

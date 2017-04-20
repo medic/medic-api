@@ -44,6 +44,29 @@ exports['getMessages returns 500 error if limit over 100'] = function(test) {
   });
 };
 
+exports['getMessages passes state param'] = function(test) {
+  test.expect(3);
+  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: [] });
+  controller.getMessages({ state: 'happy' }, function(err) {
+    test.ok(!err);
+    test.equals(getView.callCount, 1);
+    test.equals('happy', getView.getCall(0).args[2].key);
+    test.done();
+  });
+};
+
+exports['getMessages passes states param'] = function(test) {
+  test.expect(3);
+  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: [] });
+  controller.getMessages({ states: ['happy', 'angry'] }, function(err) {
+    console.log(err);
+    test.ok(!err);
+    test.equals(getView.callCount, 1);
+    test.deepEqual(['happy', 'angry'], getView.getCall(0).args[2].keys);
+    test.done();
+  });
+};
+
 exports['getMessage returns 404 if view returns empty rows'] = function(test) {
   test.expect(3);
   var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, {rows: []});
