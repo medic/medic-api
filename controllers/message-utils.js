@@ -27,13 +27,7 @@ module.exports = {
       viewOptions.descending = true;
     }
     if (options.state) {
-      viewOptions.startkey = [ options.state ];
-      viewOptions.endkey = [ options.state ];
-      if (viewOptions.descending) {
-        viewOptions.startkey.push({});
-      } else {
-        viewOptions.endkey.push({});
-      }
+      viewOptions.key = options.state;
     }
     getTaskMessages(viewOptions, function(err, data) {
       if (err) {
@@ -54,6 +48,15 @@ module.exports = {
       body.message_id = id;
       updateCouchDB(msg._record_id, body, function(err, data) {
         if (err) {
+          // Output more informative error message.
+          const isMessageUseless = (message) => !message || message === 'Unspecified error';
+          if (err.message &&
+            isMessageUseless(err.message) &&
+            err.payload &&
+            err.payload.error &&
+            !isMessageUseless(err.payload.error)) {
+            err.message = err.payload.error;
+          }
           return callback(err);
         }
         callback(null, {
