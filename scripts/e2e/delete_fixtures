@@ -1,0 +1,35 @@
+#!/bin/bash -eu
+
+# Does the inverse of create_fixtures
+echo && echo "[$0] deleting fixtures for api e2e tests..."
+
+delete_doc() {
+	local docUrl="$COUCH_URL/$1"
+	local rev="$(curl $docUrl | jq --raw-output ._rev)"
+	if [[ "$rev" != "null" ]]; then
+		curl -X DELETE "$docUrl?rev=$rev"
+	fi
+}
+
+delete_user() {
+	local username="$1"
+	echo "$API_URL/api/v1/users/$1"
+	curl -X DELETE "$API_URL/api/v1/users/$1"
+}
+
+echo "[$0] deleting users created by test fixtures..."
+delete_user "bob"
+delete_user "clare"
+delete_user "chw-boss"
+delete_user "chw"
+
+echo && echo "[$0] deleting places/persons created by test fixtures..."
+delete_doc "PARENT_PLACE"
+delete_doc "fixture:bobville"
+delete_doc "fixture:clareville"
+delete_doc "fixture:chw-bossville"
+delete_doc "fixture:chwville"
+delete_doc "fixture:user:chw"
+delete_doc "fixture:user:chw-boss"
+
+echo && echo "[$0] Finished."

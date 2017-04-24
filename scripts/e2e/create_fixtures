@@ -2,6 +2,8 @@
 
 # we assume that the admin user already exists
 
+echo && echo "[$0] creating fixtures for api e2e tests..."
+
 echo && echo "[$0] creating the PARENT_PLACE..."
 curl -X PUT \
 	--data '{ "_id":"PARENT_PLACE", "type":"district_hospital", "name":"Big Parent Hospital" }' \
