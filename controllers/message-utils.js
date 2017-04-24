@@ -23,9 +23,6 @@ module.exports = {
     if (viewOptions.limit > 1000) {
       return callback({ code: 500, message: 'Limit max is 1000' });
     }
-    if (typeof options.descending !== 'undefined') {
-      viewOptions.descending = true;
-    }
     if (options.state) {
       viewOptions.key = options.state;
     }
@@ -39,6 +36,15 @@ module.exports = {
       var msgs = data.rows.map(function(row) {
         return row.value;
       });
+      var sortFunc;
+      if (typeof options.descending !== 'undefined') {
+        // descending
+        sortFunc = (a, b) => b.sending_due_date - a.sending_due_date;
+      } else {
+        // ascending
+        sortFunc = (a, b) => a.sending_due_date - b.sending_due_date;
+      }
+      msgs.sort(sortFunc);
       callback(null, msgs);
     });
   },

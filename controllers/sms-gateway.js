@@ -62,6 +62,8 @@ function markMessagesForwarded(messages, callback) {
     },
     function(err) {
       if (err) {
+        // No error throwing here, because no big deal : 'forwarded-to-gateway' status
+        // wasn't saved to DB, so message will stay in 'pending' status and be retried next time.
         warn(err);
       }
       return callback();
