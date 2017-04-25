@@ -34,6 +34,9 @@ module.exports = {
         return callback(err);
       }
       var msgs = data.rows.map(function(row) {
+        if (typeof row.value.sending_due_date === 'string') {
+          row.value.sending_due_date = new Date(row.value.sending_due_date).getTime();
+        }
         return row.value;
       });
       var sortFunc;
