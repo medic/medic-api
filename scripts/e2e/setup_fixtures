@@ -1,3 +1,6 @@
+#!/bin/bash -eu
+# we assume that the admin user already exists
+
 delete_doc() {
 	echo "[$0] Deleting doc $1"
 	local docUrl="$COUCH_URL/$1"
@@ -18,9 +21,6 @@ delete_user() {
 	echo "Check : fetch again"
 	curl "$API_URL/api/v1/users"
 }
-
-echo "[$0] single echo $COUCH_URL"
-echo && echo "[$0] double echo $COUCH_URL"
 
 echo "[$0] Setting up fixtures for api e2e test. Cleaning up old test data..."
 
