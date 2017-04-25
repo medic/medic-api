@@ -1,15 +1,50 @@
-#!/bin/bash -eu
+delete_doc() {
+	echo "[$0] Deleting doc $1"
+	local docUrl="$COUCH_URL/$1"
+	local rev="$(curl $docUrl | jq --raw-output ._rev)"
+	if [[ "$rev" != "null" ]]; then
+		curl -X DELETE "$docUrl?rev=$rev"
+	fi
 
-# we assume that the admin user already exists
+	echo "Check : fetch again"
+	curl "$docUrl"
+}
 
-echo && echo "[$0] creating fixtures for api e2e tests..."
+delete_user() {
+	echo "[$0] Deleting user $1"
+	local username="$1"
+	curl -X DELETE "$API_URL/api/v1/users/$1"
 
-echo && echo "[$0] creating the PARENT_PLACE..."
+	echo "Check : fetch again"
+	curl "$API_URL/api/v1/users"
+}
+
+echo "[$0] single echo $COUCH_URL"
+echo && echo "[$0] double echo $COUCH_URL"
+
+echo "[$0] Setting up fixtures for api e2e test. Cleaning up old test data..."
+
+delete_user "bob"
+delete_user "clare"
+delete_user "chw-boss"
+delete_user "chw"
+
+delete_doc "PARENT_PLACE"
+delete_doc "fixture:bobville"
+delete_doc "fixture:clareville"
+delete_doc "fixture:chw-bossville"
+delete_doc "fixture:chwville"
+delete_doc "fixture:user:chw"
+delete_doc "fixture:user:chw-boss"
+
+echo "[$0] Finished cleanup. Creating new test data..."
+
+echo "[$0] creating the PARENT_PLACE..."
 curl -X PUT \
 	--data '{ "_id":"PARENT_PLACE", "type":"district_hospital", "name":"Big Parent Hospital" }' \
 	"$COUCH_URL/PARENT_PLACE"
 
-echo && echo "[$0] creating user: bob..."
+echo "[$0] creating user: bob..."
 curl -X POST \
 	-H 'Content-Type: application/json' \
 	--data '{
@@ -28,7 +63,7 @@ curl -X POST \
 	}' \
 	"$API_URL/api/v1/users"
 
-echo && echo "[$0] creating user: clare..."
+echo "[$0] creating user: clare..."
 curl -X POST \
 	-H 'Content-Type: application/json' \
 	--data '{
@@ -47,7 +82,7 @@ curl -X POST \
 	}' \
 	"$API_URL/api/v1/users"
 
-echo && echo "[$0] creating user: chw-boss..."
+echo "[$0] creating user: chw-boss..."
 curl -X POST \
 	-H 'Content-Type: application/json' \
 	--data '{
@@ -67,7 +102,7 @@ curl -X POST \
 	}' \
 	"$API_URL/api/v1/users"
 
-echo && echo "[$0] creating user: chw..."
+echo "[$0] creating user: chw..."
 curl -X POST \
 	-H 'Content-Type: application/json' \
 	--data '{
@@ -87,4 +122,5 @@ curl -X POST \
 	}' \
 	"$API_URL/api/v1/users"
 
-echo && echo "[$0] Finished."
+echo "[$0] Done."
+
