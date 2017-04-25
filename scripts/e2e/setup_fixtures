@@ -8,18 +8,12 @@ delete_doc() {
 	if [[ "$rev" != "null" ]]; then
 		curl -X DELETE "$docUrl?rev=$rev"
 	fi
-
-	echo "Check : fetch again"
-	curl "$docUrl"
 }
 
 delete_user() {
 	echo "[$0] Deleting user $1"
 	local username="$1"
 	curl -X DELETE "$API_URL/api/v1/users/$1"
-
-	echo "Check : fetch again"
-	curl "$API_URL/api/v1/users"
 }
 
 echo "[$0] Setting up fixtures for api e2e test. Cleaning up old test data..."
