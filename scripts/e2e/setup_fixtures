@@ -4,7 +4,8 @@
 delete_doc() {
 	echo "[$0] Deleting doc $1"
 	local docUrl="$COUCH_URL/$1"
-	local rev="$(curl $docUrl | jq --raw-output ._rev)"
+	echo "DOCURL $docUrl"
+	local rev="$(curl "$docUrl" | jq --raw-output ._rev)"
 	if [[ "$rev" != "null" ]]; then
 		curl -X DELETE "$docUrl?rev=$rev"
 	fi
@@ -13,7 +14,7 @@ delete_doc() {
 delete_user() {
 	echo "[$0] Deleting user $1"
 	local username="$1"
-	curl -X DELETE "$API_URL/api/v1/users/$1"
+	curl -X DELETE "$API_URL/api/v1/users/$username"
 }
 
 echo "[$0] Setting up fixtures for api e2e test. Cleaning up old test data..."
