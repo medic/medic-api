@@ -33,7 +33,7 @@ var _ = require('underscore'),
     monthlyRegistrations = require('./controllers/monthly-registrations'),
     monthlyDeliveries = require('./controllers/monthly-deliveries'),
     exportData = require('./controllers/export-data'),
-    messages = require('./controllers/messages'),
+    messages = require('./controllers/message-utils'),
     records = require('./controllers/records'),
     forms = require('./controllers/forms'),
     users = require('./controllers/users'),
@@ -199,11 +199,11 @@ app.get('/api/sms/', function(req, res) {
 app.get('/api/sms', function(req, res) {
   auth.check(req, 'can_access_gateway_api', null, function(err) {
     if (err) {
-      return serverUtils.error(err, req, res);
+      return serverUtils.error(err, req, res, true);
     }
     smsGateway.get(function(err, obj) {
       if (err) {
-        return serverUtils.error(err, res);
+        return serverUtils.error(err, req, res, true);
       }
       res.json(obj);
     });
@@ -216,11 +216,11 @@ app.post('/api/sms/', function(req, res) {
 app.post('/api/sms', jsonParser, function(req, res) {
   auth.check(req, 'can_access_gateway_api', null, function(err) {
     if (err) {
-      return serverUtils.error(err, req, res);
+      return serverUtils.error(err, req, res, true);
     }
     smsGateway.post(req, function(err, obj) {
       if (err) {
-        return serverUtils.error(err, res);
+        return serverUtils.error(err, req, res, true);
       }
       res.json(obj);
     });
@@ -381,10 +381,15 @@ app.put('/api/v1/messages/state/:id', jsonParser, function(req, res) {
     if (err) {
       return serverUtils.error(err, req, res, true);
     }
-    messages.updateMessage(req.params.id, req.body, function(err, result) {
+    messages.updateMessageTaskState({
+      messageId: req.params.id,
+      state: req.body.state,
+      details: req.body.details
+    }, function(err, result) {
       if (err) {
         return serverUtils.serverError(err.message, req, res);
       }
+      result.id = req.params.id;
       res.json(result);
     });
   });

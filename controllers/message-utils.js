@@ -1,20 +1,97 @@
-var db = require('../db');
+const _ = require('underscore'),
+      db = require('../db');
 
-var updateCouchDB = function(record_id, body, callback) {
-  db.medic.updateWithHandler(
-    'medic',
-    'update_message_task',
-    record_id,
-    body,
-    callback
-  );
-};
-
-var getTaskMessages = function(options, callback) {
+const getTaskMessages = function(options, callback) {
   db.medic.view('medic', 'tasks_messages', options, callback);
 };
 
+// copied from kujua-utils
+// TODO: get rid of this copy once Milan's refactor is complete
+const setTaskState = function(task, state, details) {
+  task.state = state;
+  task.state_details = details;
+  task.state_history = task.state_history || [];
+  task.state_history.push({
+    state: state,
+    state_details: details,
+    timestamp: new Date().toISOString()
+  });
+};
+
+const getTaskForMessage = function(uuid, doc) {
+  const getTaskFromMessage = (tasks, uuid) => tasks.find(task => {
+    if (task.messages) {
+      return task.messages.find(message => uuid === message.uuid);
+    }
+  });
+
+  return getTaskFromMessage(doc.tasks || [], uuid) ||
+         getTaskFromMessage(doc.scheduled_tasks || [], uuid);
+};
+
+
+const getTaskAndDocForMessage = function (messageId, docs) {
+  for (const doc of docs) {
+    const task = getTaskForMessage(messageId, doc);
+    if (task) {
+      return [task, doc._id];
+    }
+  }
+};
+
+/*
+ * Applies (in-place) state changes to a given collection of docs.
+ *
+ * Also returns a map of docId -> taskStateChanges
+*/
+const applyTaskStateChangesToDocs = (taskStateChanges, docs) => {
+  const taskStateChangesByDocId = {};
+  const fillTaskStateChangeByDocId = (taskStateChange, docId) => {
+    if (!taskStateChangesByDocId[docId]) {
+      taskStateChangesByDocId[docId] = [];
+    }
+    taskStateChangesByDocId[docId].push(taskStateChange);
+  };
+
+  taskStateChanges.forEach(taskStateChange => {
+    if (!taskStateChange.messageId) {
+      throw Error('Message id required');
+    }
+
+    const [task, docId] = getTaskAndDocForMessage(taskStateChange.messageId, docs);
+
+    if (!task) {
+      throw Error(`Message not found: ${taskStateChange.messageId}`);
+    }
+
+    fillTaskStateChangeByDocId(taskStateChange, docId);
+    setTaskState(task, taskStateChange.state, taskStateChange.details);
+  });
+
+  return taskStateChangesByDocId;
+};
+
 module.exports = {
+  /*
+   * Gets a message given an id
+   */
+  getMessage: function(id, callback) {
+    if (!id) {
+      return callback({ code: 500, message: 'Missing "id" parameter.' });
+    }
+    getTaskMessages({ key: id }, function(err, data) {
+      if (err) {
+        return callback(err);
+      }
+      if (data.rows.length === 0) {
+        return callback({ code: 404, message: 'Not Found' });
+      }
+      callback(null, data.rows[0].value);
+    });
+  },
+  /*
+   * Gets all messages based on passed state
+   */
   getMessages: function(options, callback) {
     options = options || {};
     var viewOptions = {
@@ -51,45 +128,67 @@ module.exports = {
       callback(null, msgs);
     });
   },
-  updateMessage: function(id, body, callback) {
-    module.exports.getMessage(id, function(err, msg) {
+  /*
+   * See: updateMessageTaskStates
+   */
+  updateMessageTaskState: function(taskStateChange, callback) {
+    module.exports.updateMessageTaskStates([taskStateChange], callback);
+  },
+  /*
+   * taskStateChanges: a collection of:
+   * {
+   *  messageId, state, details
+   * }
+   */
+  updateMessageTaskStates: function(taskStateChanges, callback, retriesLeft=3) {
+    getTaskMessages({ keys: taskStateChanges.map(change => change.messageId)}, (err, taskMessageResults) => {
       if (err) {
         return callback(err);
       }
-      // update requires message_id parameter in JSON body
-      body.message_id = id;
-      updateCouchDB(msg._record_id, body, function(err, data) {
-        if (err) {
-          // Output more informative error message.
-          const isMessageUseless = (message) => !message || message === 'Unspecified error';
-          if (err.message &&
-            isMessageUseless(err.message) &&
-            err.payload &&
-            err.payload.error &&
-            !isMessageUseless(err.payload.error)) {
-            err.message = err.payload.error;
-          }
+
+      const idsToFetch = _.uniq(_.pluck(taskMessageResults.rows, 'id'));
+
+      db.medic.fetch({keys: idsToFetch}, (err, docResults) => {
+        const docs = _.pluck(docResults.rows, 'doc');
+
+        let stateChangesByDocId;
+        try {
+          stateChangesByDocId = applyTaskStateChangesToDocs(taskStateChanges, docs);
+        } catch (err) {
           return callback(err);
         }
-        callback(null, {
-          id: id,
-          success: data.payload.success
+
+        db.medic.bulk({docs: docs}, (err, results) => {
+          if (err) {
+            return callback(err);
+          }
+
+          const failures = results.filter((result) => !result.ok);
+          if (failures.length && !retriesLeft) {
+            const failure = `Failed to updateMessageTaskStates: ${JSON.stringify(failures)}`;
+            console.error(failure);
+            return callback(Error(failure));
+          }
+
+          if (failures.length) {
+            console.warn(`Problems with updateMessageTaskStates: ${JSON.stringify(failures)}`);
+            console.warn(`Retrying ${retriesLeft} more times`);
+
+            const relevantChanges = _.chain(stateChangesByDocId)
+                                     .pick(_.pluck(failures, 'id'))
+                                     .values()
+                                     .flatten()
+                                     .value();
+
+            return module.exports.updateMessageTaskStates(
+              relevantChanges,
+              callback,
+              retriesLeft - 1);
+          }
+
+          callback(null, {success: true});
         });
       });
     });
-  },
-  getMessage: function(id, callback) {
-    if (!id) {
-      return callback({ code: 500, message: 'Missing "id" parameter.' });
-    }
-    getTaskMessages({ key: id }, function(err, data) {
-      if (err) {
-        return callback(err);
-      }
-      if (data.rows.length === 0) {
-        return callback({ code: 404, message: 'Not Found' });
-      }
-      callback(null, data.rows[0].value);
-    });
-  },
+  }
 };
