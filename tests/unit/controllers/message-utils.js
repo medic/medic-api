@@ -104,9 +104,9 @@ exports['getMessage returns view data'] = function(test) {
 };
 
 exports['updateMessageTaskStates takes a collection of state changes and saves it to docs'] = test => {
-  sinon.stub(db.medic, 'view').callsArgWith(3, null, {rows: [
-    {id: 'testMessageId1'},
-    {id: 'testMessageId2'}]});
+  // sinon.stub(db.medic, 'view').callsArgWith(3, null, {rows: [
+  //   {id: 'testMessageId1'},
+  //   {id: 'testMessageId2'}]});
 
   sinon.stub(db.medic, 'fetch').callsArgWith(1, null, {rows: [
     {doc: {
