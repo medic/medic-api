@@ -97,6 +97,9 @@ module.exports = {
   get: function(key) {
     return settings[key];
   },
+  getForm: function(code) {
+    return settings.forms && settings.forms[code];
+  },
   translate: function(key, locale, ctx) {
     if (_.isObject(locale)) {
       ctx = locale;

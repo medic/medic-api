@@ -111,6 +111,7 @@ Migrations that error will cause medic-api to stop on an error, and will be atte
 
 ## Migration script api
 Your migration script should have an export that looks like this:
+
 ```js
 module.exports = {
   name: 'your-unique-migration-name',
@@ -422,7 +423,7 @@ allow multiple content types to appear in a single `Content-Type` header.
 | -------- | ----------------- |
 | message  | Message string in a supported format like Muvuku or Textforms.  Depending if your Medic Mobile instance is configured in forms-only mode or not you might recieve an error if the form is not found.  |
 | from |   Reporting phone number. |
-| reported_date |  Timestamp in MS since Unix Epoch of when the message was received on the gateway. Defaults to now. |
+| reported_date |  Timestamp of when the message was received on the gateway. Defaults to now. |
 | locale |  Optional locale string. |
 
 
@@ -437,7 +438,7 @@ All property names will be lowercased and any properties beginning with `_` (und
 | ----------- | ----------------- |
 | _meta.form  | The form code.    |
 | _meta.from  |  Reporting phone number. |
-| _meta.reported_date |  Timestamp in MS since Unix Epoch of when the message was received on the gateway. Defaults to now. |
+| _meta.reported_date |  Timestamp of when the message was received on the gateway. Defaults to now. |
 | _meta.locale | Optional locale string.  Example: 'fr' |
 
 
@@ -474,6 +475,7 @@ Content-Type: application/json
   "year": 2015,
   "visit": "ANC",
   "_meta": {
+    "from": "+5511943348031",
     "form": "YYYZ",
     "reported_date": 1352399720000
   }
@@ -496,7 +498,7 @@ If required fields are not found return 500.
 
 If invalid JSON return error response 500.
 
-If submitting JSON and correspending form is not found on the server you will receive an error.
+If submitting JSON and corresponding form is not found on the server you will receive an error.
 
 
 # Messages

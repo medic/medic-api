@@ -1,23 +1,9 @@
 const _ = require('underscore'),
+      utils = require('medic-api-utils'),
       db = require('../db');
 
 const getTaskMessages = function(options, callback) {
   db.medic.view('medic', 'tasks_messages', options, callback);
-};
-
-// copied from kujua-utils
-// TODO: get rid of this copy once Milan's refactor is complete
-// See: https://github.com/medic/medic-webapp/issues/3019
-// Specifically, this should be in a new repo that we can pull in via npm
-const setTaskState = function(task, state, details) {
-  task.state = state;
-  task.state_details = details;
-  task.state_history = task.state_history || [];
-  task.state_history.push({
-    state: state,
-    state_details: details,
-    timestamp: new Date().toISOString()
-  });
 };
 
 const getTaskForMessage = function(uuid, doc) {
@@ -69,7 +55,7 @@ const applyTaskStateChangesToDocs = (taskStateChanges, docs) => {
     }
 
     fillTaskStateChangeByDocId(taskStateChange, docId);
-    setTaskState(task, taskStateChange.state, taskStateChange.details);
+    utils.setTaskState(task, taskStateChange.state, taskStateChange.details);
   });
 
   return taskStateChangesByDocId;
