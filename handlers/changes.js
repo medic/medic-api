@@ -177,7 +177,7 @@ var getChanges = function(feed) {
 
   // we cannot call 'changes' in nano because it only uses GET requests and
   // our query string might be too long for GET
-  async.parallel(chunks.map(docIds => (callback) => db.request({
+  async.parallel(chunks.map(docIds => callback => db.request({
     db: db.settings.db,
     path: '_changes',
     qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
