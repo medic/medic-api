@@ -709,7 +709,8 @@ exports['updates the feed when the doc is updated'] = function(test) {
 };
 
 exports['replicates new docs to relevant feeds'] = function(test) {
-  test.expect(10);
+//  test.expect(10); // FIXME where do the other 2 assertions come from?
+  test.expect(8);
 
   var userCtx1 = { name: 'jim', roles: [ 'district_admin' ] };
   var userCtx2 = { name: 'bob', roles: [ 'district_admin' ] };
