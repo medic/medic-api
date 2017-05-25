@@ -231,6 +231,7 @@ const mergeChangesResults = results => {
     return;
   }
 
+  // TODO in couch 2, seq values will not be numeric
   merged.results.sort((a, b) => a.seq - b.seq);
 
   return merged;
