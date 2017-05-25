@@ -163,8 +163,8 @@ var cleanUp = function(feed) {
   if (index !== -1) {
     continuousFeeds.splice(index, 1);
   }
-  if (feed.changesReq) {
-    feed.changesReq.abort();
+  if (feed.changesReqs) {
+    feed.changesReqs.forEach(req => req && req.abort());
   }
 };
 
@@ -175,15 +175,16 @@ var getChanges = function(feed) {
     chunks.push(allIds.splice(0, MAX_DOC_IDS));
   }
 
+  feed.changesReqs = [];
   // we cannot call 'changes' in nano because it only uses GET requests and
   // our query string might be too long for GET
-  async.parallel(chunks.map(docIds => callback => db.request({
+  async.parallel(chunks.map(docIds => callback => feed.changesReqs.push(db.request({
     db: db.settings.db,
     path: '_changes',
     qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
     body: { doc_ids: docIds },
     method: 'POST'
-  }, callback)), function(err, results) {
+  }, callback))), function(err, results) {
     if (feed.res.finished) {
       // Don't write to the response if it has already ended. The change
       // will be picked up in the subsequent changes request.
