@@ -222,7 +222,7 @@ const mergeChangesResults = results => {
       console.error('No _changes error, but malformed response:', JSON.stringify(changes));
       err = true;
     } else {
-      changes.results.forEach(r => merged.results.push(r));
+      merged.results = merged.results.concat(changes.results);
       merged.last_seq = Math.max(merged.last_seq, changes.last_seq);
     }
   });
