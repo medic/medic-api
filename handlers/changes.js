@@ -184,7 +184,9 @@ var getChanges = function(feed) {
     qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
     body: { doc_ids: docIds },
     method: 'POST'
-  }, callback))), function(err, results) {
+  }, callback))), function(err, args) {
+    const results = args.map(a => a[0]);
+
     if (feed.res.finished) {
       // Don't write to the response if it has already ended. The change
       // will be picked up in the subsequent changes request.
