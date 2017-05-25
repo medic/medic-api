@@ -1,4 +1,5 @@
 var _ = require('underscore'),
+    async = require('async'),
     auth = require('../auth'),
     config = require('../config'),
     serverUtils = require('../server-utils'),
@@ -8,6 +9,13 @@ var _ = require('underscore'),
     CONTACT_TYPES = ['person', 'clinic', 'health_center', 'district_hospital'],
     inited = false,
     continuousFeeds = [];
+
+/**
+ * As per https://issues.apache.org/jira/browse/COUCHDB-1288, there is a 100 doc
+ * limit on processing changes feeds with the _doc_ids filter within a
+ * reasonable amount of time.
+ */
+const MAX_DOC_IDS = 100;
 
 var error = function(code, message) {
   return JSON.stringify({ code: code, message: message });
@@ -161,15 +169,21 @@ var cleanUp = function(feed) {
 };
 
 var getChanges = function(feed) {
+  var allIds = _.union(feed.requestedIds, feed.validatedIds);
+  var chunks = [];
+  while (allIds.length) {
+    chunks.push(allIds.splice(0, MAX_DOC_IDS));
+  }
+
   // we cannot call 'changes' in nano because it only uses GET requests and
   // our query string might be too long for GET
-  feed.changesReq = db.request({
+  async.parallel(chunks.map(docIds => (callback) => db.request({
     db: db.settings.db,
     path: '_changes',
     qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
-    body: { doc_ids: _.union(feed.requestedIds, feed.validatedIds) },
+    body: { doc_ids: docIds },
     method: 'POST'
-  }, function(err, changes) {
+  }, callback)), function(err, results) {
     if (feed.res.finished) {
       // Don't write to the response if it has already ended. The change
       // will be picked up in the subsequent changes request.
@@ -178,19 +192,48 @@ var getChanges = function(feed) {
     cleanUp(feed);
     if (err) {
       feed.res.write(error(503, 'Error processing your changes'));
-    } else if (!changes || !changes.results) {
-      // See: https://github.com/medic/medic-webapp/issues/3099
-      // This should never happen, but apparently it does sometimes.
-      // Attempting to log out the response usefully to see what's occuring
-      var malformedChangesError = 'No _changes error, but malformed response: ';
-      var printableChanges = JSON.stringify(changes);
-      console.error(malformedChangesError, printableChanges);
-      feed.res.write(error(503, malformedChangesError + printableChanges));
     } else {
-      prepareResponse(feed, changes);
+      const changes = mergeChangesResults(results);
+      if (changes) {
+        prepareResponse(feed, changes);
+      } else {
+        feed.res.write(error(503, 'No _changes error, but malformed response.'));
+      }
     }
     feed.res.end();
   });
+};
+
+const mergeChangesResults = results => {
+  const merged = {
+    results: [],
+    last_seq: 0, // TODO in couch 2, this will not be numeric
+  };
+  let err = false;
+
+  results.forEach(changes => {
+    if (err) {
+      return;
+    }
+    if (!changes || !changes.results) {
+      // See: https://github.com/medic/medic-webapp/issues/3099
+      // This should never happen, but apparently it does sometimes.
+      // Attempting to log out the response usefully to see what's occuring
+      console.error('No _changes error, but malformed response:', JSON.stringify(changes));
+      err = true;
+    } else {
+      changes.results.forEach(r => merged.results.push(r));
+      merged.last_seq = Math.max(merged.last_seq, changes.last_seq);
+    }
+  });
+
+  if (err) {
+    return;
+  }
+
+  merged.results.sort((a, b) => a.seq - b.seq);
+
+  return merged;
 };
 
 var bindServerIds = function(feed, callback) {
