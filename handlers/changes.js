@@ -208,9 +208,9 @@ var getChanges = function(feed) {
 };
 
 const mergeChangesResults = results => {
+  let lastSeqNum = 0;
   const merged = {
     results: [],
-    last_seq: 0, // TODO in couch 2, this will not be numeric
   };
   let err = false;
 
@@ -226,7 +226,11 @@ const mergeChangesResults = results => {
       err = true;
     } else {
       merged.results = merged.results.concat(changes.results);
-      merged.last_seq = Math.max(merged.last_seq, changes.last_seq);
+      const numericSeq = numericSeqFrom(changes.last_seq);
+      if (numericSeq > lastSeqNum) {
+        merged.last_seq = changes.last_seq;
+        lastSeqNum = numericSeq;
+      }
     }
   });
 
@@ -234,11 +238,12 @@ const mergeChangesResults = results => {
     return;
   }
 
-  // TODO in couch 2, seq values will not be numeric
-  merged.results.sort((a, b) => a.seq - b.seq);
+  merged.results.sort((a, b) => numericSeqFrom(a.seq) - numericSeqFrom(b.seq));
 
   return merged;
 };
+
+const numericSeqFrom = x => typeof x === 'number' ? x : Number.parseInt(x.split('-')[0]);
 
 var bindServerIds = function(feed, callback) {
   bindSubjectIds(feed, function(err) {
