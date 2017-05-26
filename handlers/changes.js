@@ -173,20 +173,20 @@ var cleanUp = function(feed) {
 };
 
 var getChanges = function(feed) {
-  var allIds = _.union(feed.requestedIds, feed.validatedIds);
-  var chunks = [];
-  while (allIds.length) {
-    chunks.push(allIds.splice(0, MAX_DOC_IDS));
+  const allIds = _.union(feed.requestedIds, feed.validatedIds);
+  const chunks = [];
+
+  if (feed.req.query.feed === 'longpoll') {
+    chunks.push(allIds);
+  } else {
+    while (allIds.length) {
+      chunks.push(allIds.splice(0, MAX_DOC_IDS));
+    }
   }
 
   feed.changesReqs = [];
   // we cannot call 'changes' in nano because it only uses GET requests and
   // our query string might be too long for GET
-
-  // TODO this breaks longpolling!
-  // -- for longpolling we could go back to the old way of not batching requests?
-  // one problem is if you're longpolling you may get results back in the wrong order (different batches)
-  // another problem is you won't get a response until all batches have returned - for a single change only one batch will return
   async.map(
     chunks,
     (docIds, callback) => {
