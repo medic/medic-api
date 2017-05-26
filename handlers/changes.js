@@ -155,6 +155,12 @@ var prepareResponse = function(feed, changes) {
   feed.res.write(JSON.stringify(changes));
 };
 
+var abortAllChangesRequests = feed => {
+  if (feed.changesReqs) {
+    feed.changesReqs.forEach(req => req && req.abort());
+  }
+};
+
 var cleanUp = function(feed) {
   if (feed.heartbeat) {
     clearInterval(feed.heartbeat);
@@ -163,9 +169,7 @@ var cleanUp = function(feed) {
   if (index !== -1) {
     continuousFeeds.splice(index, 1);
   }
-  if (feed.changesReqs) {
-    feed.changesReqs.forEach(req => req && req.abort());
-  }
+  abortAllChangesRequests(feed);
 };
 
 var getChanges = function(feed) {
@@ -178,43 +182,51 @@ var getChanges = function(feed) {
   feed.changesReqs = [];
   // we cannot call 'changes' in nano because it only uses GET requests and
   // our query string might be too long for GET
-  async.parallel(chunks.map(docIds => callback => feed.changesReqs.push(db.request({
-    db: db.settings.db,
-    path: '_changes',
-    qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
-    body: { doc_ids: docIds },
-    method: 'POST'
-  }, callback))), function(err, args) {
-    const results = args.map(a => a[0]);
 
-    if (feed.res.finished) {
-      // Don't write to the response if it has already ended. The change
-      // will be picked up in the subsequent changes request.
-      return;
-    }
-    cleanUp(feed);
-    if (err) {
-      feed.res.write(error(503, 'Error processing your changes'));
-    } else {
-      const changes = mergeChangesResults(results);
-      if (changes) {
-        prepareResponse(feed, changes);
-      } else {
-        feed.res.write(error(503, 'No _changes error, but malformed response.'));
+  // TODO this breaks longpolling!
+  // -- for longpolling we could go back to the old way of not batching requests?
+  // one problem is if you're longpolling you may get results back in the wrong order (different batches)
+  // another problem is you won't get a response until all batches have returned - for a single change only one batch will return
+  async.map(
+    chunks,
+    (docIds, callback) => {
+      feed.changesReqs.push(db.request({
+        db: db.settings.db,
+        path: '_changes',
+        qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
+        body: { doc_ids: docIds },
+        method: 'POST'
+      }, callback));
+    },
+    (err, responses) => {
+      if (feed.res.finished) {
+        // Don't write to the response if it has already ended. The change
+        // will be picked up in the subsequent changes request.
+        return;
       }
+      cleanUp(feed);
+      if (err) {
+        feed.res.write(error(503, 'Error processing your changes'));
+      } else {
+        const changes = mergeChangesResponses(responses);
+        if (changes) {
+          prepareResponse(feed, changes);
+        } else {
+          feed.res.write(error(503, 'No _changes error, but malformed response.'));
+        }
+      }
+      feed.res.end();
     }
-    feed.res.end();
-  });
+  );
 };
 
-const mergeChangesResults = results => {
+const mergeChangesResponses = responses => {
   let lastSeqNum = 0;
-  const merged = {
-    results: [],
-  };
+  let lastSeq;
   let err = false;
+  const results = [];
 
-  results.forEach(changes => {
+  responses.forEach(changes => {
     if (err) {
       return;
     }
@@ -225,10 +237,10 @@ const mergeChangesResults = results => {
       console.error('No _changes error, but malformed response:', JSON.stringify(changes));
       err = true;
     } else {
-      merged.results = merged.results.concat(changes.results);
+      results.push(changes.results);
       const numericSeq = numericSeqFrom(changes.last_seq);
       if (numericSeq > lastSeqNum) {
-        merged.last_seq = changes.last_seq;
+        lastSeq = changes.last_seq;
         lastSeqNum = numericSeq;
       }
     }
@@ -238,12 +250,16 @@ const mergeChangesResults = results => {
     return;
   }
 
-  merged.results.sort((a, b) => numericSeqFrom(a.seq) - numericSeqFrom(b.seq));
+  const merged = Array.prototype.concat(...results); // flatten the result sets
+  merged.sort((a, b) => numericSeqFrom(a.seq) - numericSeqFrom(b.seq));
 
-  return merged;
+  return {
+    last_seq: lastSeq,
+    results: merged
+  };
 };
 
-const numericSeqFrom = x => typeof x === 'number' ? x : Number.parseInt(x.split('-')[0]);
+const numericSeqFrom = seq => typeof seq === 'number' ? seq : Number.parseInt(seq.split('-')[0]);
 
 var bindServerIds = function(feed, callback) {
   bindSubjectIds(feed, function(err) {
@@ -360,9 +376,7 @@ var updateFeeds = function(changes) {
   continuousFeeds.forEach(function(feed) {
     // check if new and relevant
     if (hasNewApplicableDoc(feed, modifiedChanges)) {
-      if (feed.changesReq) {
-        feed.changesReq.abort();
-      }
+      abortAllChangesRequests(feed);
       bindServerIds(feed, function(err) {
         if (err) {
           return serverUtils.error(err, feed.req, feed.res);
