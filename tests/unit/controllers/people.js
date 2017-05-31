@@ -84,7 +84,7 @@ exports['getPerson succeeds and returns doc when person type.'] = test => {
 };
 
 exports['createPerson sets contact type before validating'] = test => {
-  sinon.stub(controller, 'validatePerson', data => {
+  sinon.stub(controller, 'validatePerson').callsFake(data => {
     test.equal(data.type, 'person');
     test.equal(data.name, 'Kobe');
     test.done();
@@ -122,7 +122,7 @@ exports['createPerson accepts valid reported_date in ms since epoch.'] = test =>
     reported_date: '123'
   };
   sinon.stub(places, 'getOrCreatePlace').callsArg(1);
-  sinon.stub(db.medic, 'insert', doc => {
+  sinon.stub(db.medic, 'insert').callsFake(doc => {
     test.ok(doc.reported_date === 123);
     test.done();
   });
@@ -135,7 +135,7 @@ exports['createPerson accepts valid reported_date in string format'] = test => {
     reported_date: '2011-10-10T14:48:00-0300'
   };
   sinon.stub(places, 'getOrCreatePlace').callsArg(1);
-  sinon.stub(db.medic, 'insert', doc => {
+  sinon.stub(db.medic, 'insert').callsFake(doc => {
     test.ok(doc.reported_date === new Date('2011-10-10T14:48:00-0300').valueOf());
     test.done();
   });
@@ -146,7 +146,7 @@ exports['createPerson sets a default reported_date.'] = test => {
   const person = {
     name: 'Test'
   };
-  sinon.stub(db.medic, 'insert', doc => {
+  sinon.stub(db.medic, 'insert').callsFake(doc => {
     // should be set to within 5 seconds of now
     test.ok(doc.reported_date <= (new Date().valueOf()));
     test.ok(doc.reported_date > (new Date().valueOf() - 5000));

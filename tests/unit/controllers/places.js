@@ -180,7 +180,7 @@ exports['createPlaces supports objects with name and right type.'] = test => {
      }
    }
   };
-  sinon.stub(db.medic, 'insert', (doc, cb) => {
+  sinon.stub(db.medic, 'insert').callsFake((doc, cb) => {
     if (doc.name === 'CHP Branch One') {
       return cb(null, {id: 'abc'});
     }
@@ -198,7 +198,7 @@ exports['createPlaces supports objects with name and right type.'] = test => {
       return cb(null, {id: 'ghi'});
     }
   });
-  sinon.stub(db.medic, 'get', (id, cb) => {
+  sinon.stub(db.medic, 'get').callsFake((id, cb) => {
     if (id === 'abc') {
       return cb(null, {
         _id: 'abc',
@@ -249,14 +249,14 @@ exports['createPlaces supports parents defined as uuids.'] = test => {
     type: 'health_center',
     parent: 'ad06d137'
   };
-  sinon.stub(db.medic, 'get', (id, cb) => {
+  sinon.stub(db.medic, 'get').callsFake((id, cb) => {
     return cb(null, {
       _id: 'ad06d137',
       name: 'CHP Branch One',
       type: 'district_hospital'
     });
   });
-  sinon.stub(db.medic, 'insert', (doc, cb) => {
+  sinon.stub(db.medic, 'insert').callsFake((doc, cb) => {
     // the parent should be created/resolved, parent id should be set.
     test.equal(doc.name, 'CHP Area One');
     test.equal(doc.type, 'health_center');
@@ -291,7 +291,7 @@ exports['createPlaces accepts valid reported_date in ms since epoch'] = test => 
     type: 'district_hospital',
     reported_date: '123'
   };
-  sinon.stub(db.medic, 'insert', doc => {
+  sinon.stub(db.medic, 'insert').callsFake(doc => {
     test.ok(doc.reported_date === 123);
     test.done();
   });
@@ -304,7 +304,7 @@ exports['createPlaces accepts valid reported_date in string format'] = test => {
     type: 'district_hospital',
     reported_date: '2011-10-10T14:48:00-0300'
   };
-  sinon.stub(db.medic, 'insert', doc => {
+  sinon.stub(db.medic, 'insert').callsFake(doc => {
     test.ok(doc.reported_date === new Date('2011-10-10T14:48:00-0300').valueOf());
     test.done();
   });
@@ -316,7 +316,7 @@ exports['createPlaces sets a default reported_date.'] = test => {
     name: 'Test',
     type: 'district_hospital'
   };
-  sinon.stub(db.medic, 'insert', doc => {
+  sinon.stub(db.medic, 'insert').callsFake(doc => {
     // should be set to within 5 seconds of now
     test.ok(doc.reported_date <= (new Date().valueOf()));
     test.ok(doc.reported_date > (new Date().valueOf() - 5000));
@@ -340,7 +340,7 @@ exports['updatePlace handles contact field'] = test => {
   sinon.stub(controller, 'getPlace').callsArgWith(1, null, {});
   sinon.stub(controller, '_validatePlace').callsArg(1);
   sinon.stub(people, 'getOrCreatePerson').callsArg(1);
-  sinon.stub(db.medic, 'insert', (doc, cb) => {
+  sinon.stub(db.medic, 'insert').callsFake((doc, cb) => {
     cb(null, {id: 'x', rev: 'y'});
   });
   controller.updatePlace('123', data, (err, resp) => {
