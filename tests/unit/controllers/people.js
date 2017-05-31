@@ -142,6 +142,40 @@ exports['createPerson accepts valid reported_date in string format'] = test => {
   controller.createPerson(person);
 };
 
+exports['createPerson minifies the given parent'] = test => {
+  const person = {
+    name: 'Test',
+    reported_date: '2011-10-10T14:48:00-0300',
+    place: 'a'
+  };
+  const place = {
+    _id: 'a',
+    name: 'Test area',
+    parent: {
+      _id: 'b',
+      name: 'Test district',
+    }
+  };
+  const minified = {
+    _id: 'a',
+    parent: {
+      _id: 'b'
+    }
+  };
+  sinon.stub(places, 'getOrCreatePlace').callsArgWith(1, null, place);
+  sinon.stub(places, 'minify').returns(minified);
+  sinon.stub(db.medic, 'insert').callsFake(doc => {
+    test.ok(!doc.place);
+    test.deepEqual(doc.parent, minified);
+    test.equals(places.getOrCreatePlace.callCount, 1);
+    test.equals(places.getOrCreatePlace.args[0][0], 'a');
+    test.equals(places.minify.callCount, 1);
+    test.deepEqual(places.minify.args[0][0], place);
+    test.done();
+  });
+  controller.createPerson(person);
+};
+
 exports['createPerson sets a default reported_date.'] = test => {
   const person = {
     name: 'Test'

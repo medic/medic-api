@@ -77,7 +77,7 @@ const createPerson = (data, callback) => {
         if (err) {
           return callback(err);
         }
-        data.parent = place;
+        data.parent = places.minify(place);
         delete data.place;
         db.medic.insert(data, callback);
       });

@@ -6,6 +6,20 @@ const _ = require('underscore'),
       PLACE_EDITABLE_FIELDS = ['name', 'parent', 'contact', 'place_id'],
       PLACE_TYPES = ['national_office', 'district_hospital', 'health_center', 'clinic'];
 
+const minify = contact => {
+  if (!contact) {
+    return contact;
+  }
+  const result = { _id: contact._id };
+  let minified = result;
+  while(contact.parent) {
+    minified.parent = { _id: contact.parent._id };
+    minified = minified.parent;
+    contact = contact.parent;
+  }
+  return result;
+};
+
 const getPlace = (id, callback) => {
   db.medic.get(id, (err, doc) => {
     if (err) {
@@ -92,13 +106,16 @@ const createPlace = (place, callback) => {
     } else {
       place.reported_date = utils.parseDate(place.reported_date).valueOf();
     }
+    if (place.parent) {
+      place.parent = minify(place.parent);
+    }
     if (place.contact) {
       // also validates contact if creating
       people.getOrCreatePerson(place.contact, (err, doc) => {
         if (err) {
           return callback(err);
         }
-        place.contact = doc;
+        place.contact = minify(doc);
         db.medic.insert(place, callback);
       });
     } else {
@@ -176,7 +193,7 @@ const updatePlace = (id, data, callback) => {
           if (err) {
             return cb(err);
           }
-          place.contact = doc;
+          place.contact = minify(doc);
           cb();
         });
       });
@@ -187,7 +204,7 @@ const updatePlace = (id, data, callback) => {
           if (err) {
             return cb(err);
           }
-          place.parent = doc;
+          place.parent = minify(doc);
           cb();
         });
       });
@@ -252,3 +269,4 @@ module.exports.createPlace = createPlaces;
 module.exports.getPlace = getPlace;
 module.exports.updatePlace = updatePlace;
 module.exports.getOrCreatePlace = getOrCreatePlace;
+module.exports.minify = minify;

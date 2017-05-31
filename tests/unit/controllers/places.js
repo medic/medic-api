@@ -123,8 +123,8 @@ exports['getPlace returns custom message on 404 errors.'] = test => {
 
 exports['createPlaces rejects objects with wrong type.'] = test => {
   const place = {
-   name: 'CHP Family',
-   type: 'food'
+    name: 'CHP Family',
+    type: 'food'
   };
   const insert = sinon.stub(db.medic, 'insert');
   controller._createPlaces(place, err => {
@@ -136,12 +136,12 @@ exports['createPlaces rejects objects with wrong type.'] = test => {
 
 exports['createPlaces rejects parent objects with wrong type.'] = test => {
   const place = {
-   name: 'CHP Family',
-   type: 'clinic',
-   parent: {
-     name: 'CHP Area',
-     type: 'food'
-   }
+    name: 'CHP Family',
+    type: 'clinic',
+    parent: {
+      name: 'CHP Area',
+      type: 'food'
+    }
   };
   const insert = sinon.stub(db.medic, 'insert');
   controller._createPlaces(place, err => {
@@ -153,9 +153,9 @@ exports['createPlaces rejects parent objects with wrong type.'] = test => {
 
 exports['createPlaces rejects when parent lookup fails.'] = test => {
   const place = {
-   name: 'CHP Family',
-   type: 'food',
-   parent: 'x'
+    name: 'CHP Family',
+    type: 'food',
+    parent: 'x'
   };
   const insert = sinon.stub(db.medic, 'insert');
   sinon.stub(controller, 'getPlace').callsArgWith(1, 'boom');
@@ -167,18 +167,18 @@ exports['createPlaces rejects when parent lookup fails.'] = test => {
 };
 
 exports['createPlaces supports objects with name and right type.'] = test => {
-  test.expect(6);
+  test.expect(10);
   const place = {
-   name: 'CHP Family',
-   type: 'clinic',
-   parent: {
-     name: 'CHP Area One',
-     type: 'health_center',
-     parent: {
-       name: 'CHP Branch One',
-       type: 'district_hospital'
-     }
-   }
+    name: 'CHP Family',
+    type: 'clinic',
+    parent: {
+      name: 'CHP Area One',
+      type: 'health_center',
+      parent: {
+        name: 'CHP Branch One',
+        type: 'district_hospital'
+      }
+    }
   };
   sinon.stub(db.medic, 'insert').callsFake((doc, cb) => {
     if (doc.name === 'CHP Branch One') {
@@ -187,14 +187,18 @@ exports['createPlaces supports objects with name and right type.'] = test => {
     if (doc.name === 'CHP Area One') {
       // the parent should be created/resolved, parent id should be set.
       test.equal(doc.parent._id, 'abc');
+      test.equal(doc.parent.name, undefined); // minified
+      test.equal(doc.parent.type, undefined); // minified
       return cb(null, {id: 'def'});
     }
     if (doc.name === 'CHP Family') {
       // both parents should be created/resolved
       test.equal(doc.parent._id, 'def');
-      test.equal(doc.parent.name, 'CHP Area One');
+      test.equal(doc.parent.name, undefined); // minified
+      test.equal(doc.parent.type, undefined); // minified
       test.equal(doc.parent.parent._id, 'abc');
-      test.equal(doc.parent.parent.name, 'CHP Branch One');
+      test.equal(doc.parent.parent.name, undefined); // minified
+      test.equal(doc.parent.parent.type, undefined); // minified
       return cb(null, {id: 'ghi'});
     }
   });
@@ -242,6 +246,43 @@ exports['createPlaces supports objects with name and right type.'] = test => {
   });
 };
 
+exports['createPlaces creates contacts'] = test => {
+  test.expect(4);
+  const place = {
+    name: 'CHP Family',
+    type: 'health_center',
+    parent: 'ad06d137',
+    contact: {
+      name: 'Jim',
+      type: 'person'
+    }
+  };
+  sinon.stub(people, 'getOrCreatePerson').callsFake((contact, cb) => {
+    return cb(null, {
+      _id: 'qwe',
+      name: 'Jim',
+      type: 'person'
+    });
+  });
+  sinon.stub(db.medic, 'get').callsFake((id, cb) => {
+    return cb(null, {
+      _id: 'ad06d137',
+      name: 'CHP Branch One',
+      type: 'district_hospital'
+    });
+  });
+  sinon.stub(db.medic, 'insert').callsFake((doc, cb) => {
+    test.equal(doc.contact._id, 'qwe');
+    test.equal(doc.contact.name, undefined); // minified
+    test.equal(doc.contact.type, undefined); // minified
+    return cb(null, {id: 'ghi'});
+  });
+  controller._createPlaces(place, (err, val) => {
+    test.deepEqual({id: 'ghi'}, val);
+    test.done();
+  });
+};
+
 exports['createPlaces supports parents defined as uuids.'] = test => {
   test.expect(6);
   const place = {
@@ -261,8 +302,8 @@ exports['createPlaces supports parents defined as uuids.'] = test => {
     test.equal(doc.name, 'CHP Area One');
     test.equal(doc.type, 'health_center');
     test.equal(doc.parent._id, 'ad06d137');
-    test.equal(doc.parent.name, 'CHP Branch One');
-    test.equal(doc.parent.type, 'district_hospital');
+    test.equal(doc.parent.name, undefined); // minified
+    test.equal(doc.parent.type, undefined); // minified
     return cb(null, {id: 'abc123'});
   });
   controller._createPlaces(place, (err, val) => {
@@ -339,8 +380,29 @@ exports['updatePlace handles contact field'] = test => {
   };
   sinon.stub(controller, 'getPlace').callsArgWith(1, null, {});
   sinon.stub(controller, '_validatePlace').callsArg(1);
-  sinon.stub(people, 'getOrCreatePerson').callsArg(1);
+  sinon.stub(people, 'getOrCreatePerson').callsArgWith(1, null, { _id: 'a', name: 'Jack' });
   sinon.stub(db.medic, 'insert').callsFake((doc, cb) => {
+    test.equals(doc.contact._id, 'a');
+    test.equals(doc.contact.name, undefined); // minified
+    cb(null, {id: 'x', rev: 'y'});
+  });
+  controller.updatePlace('123', data, (err, resp) => {
+    test.deepEqual(resp, { id: 'x', rev: 'y' });
+    test.done();
+  });
+};
+
+
+exports['updatePlace handles parent field'] = test => {
+  const data = {
+    parent: '71df9'
+  };
+  sinon.stub(controller, 'getPlace').callsArgWith(1, null, {});
+  sinon.stub(controller, '_validatePlace').callsArg(1);
+  sinon.stub(controller, 'getOrCreatePlace').callsArgWith(1, null, { _id: 'a', name: 'Jack' });
+  sinon.stub(db.medic, 'insert').callsFake((doc, cb) => {
+    test.equals(doc.parent._id, 'a');
+    test.equals(doc.parent.name, undefined); // minified
     cb(null, {id: 'x', rev: 'y'});
   });
   controller.updatePlace('123', data, (err, resp) => {
@@ -360,4 +422,31 @@ exports['updatePlace errors when function in series fails'] = test => {
     test.equals(err, 'go away');
     test.done();
   });
+};
+
+exports['minify removes all unnecessary data'] = test => {
+  const given = {
+    _id: 'a',
+    name: 'jim',
+    parent: {
+      _id: 'b',
+      name: 'mr jim',
+      parent: {
+        _id: 'c',
+        name: 'mr jim sr'
+      }
+    }
+  };
+  const expected = {
+    _id: 'a',
+    parent: {
+      _id: 'b',
+      parent: {
+        _id: 'c'
+      }
+    }
+  };
+  const actual = controller.minify(given);
+  test.deepEqual(actual, expected);
+  test.done();
 };
