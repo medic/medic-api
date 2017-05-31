@@ -1,14 +1,13 @@
-var _ = require('underscore'),
-    async = require('async');
+const _ = require('underscore'),
+      async = require('async'),
+      people = require('./people'),
+      utils = require('./utils'),
+      db = require('../db'),
+      PLACE_EDITABLE_FIELDS = ['name', 'parent', 'contact', 'place_id'],
+      PLACE_TYPES = ['national_office', 'district_hospital', 'health_center', 'clinic'];
 
-var people = require('./people'),
-    utils = require('./utils'),
-    db = require('../db');
-
-var PLACE_EDITABLE_FIELDS = ['name', 'parent', 'contact', 'place_id'];
-
-var getPlace = function(id, callback) {
-  db.medic.get(id, function(err, doc) {
+const getPlace = (id, callback) => {
+  db.medic.get(id, (err, doc) => {
     if (err) {
       if (err.statusCode === 404) {
         err.message  = 'Failed to find place.';
@@ -25,14 +24,7 @@ var getPlace = function(id, callback) {
   });
 };
 
-var isAPlace = function(place) {
-  return [
-    'national_office',
-    'district_hospital',
-    'health_center',
-    'clinic'
-  ].indexOf(place.type) !== -1;
-};
+const isAPlace = place => PLACE_TYPES.indexOf(place.type) !== -1;
 
 /*
  * Validate the basic data structure for a place.  Not checking against the
@@ -40,8 +32,8 @@ var isAPlace = function(place) {
  * might be requested in one API call. Just checking `type` field values and
  * some required fields.
  */
-var validatePlace = function(place, callback) {
-  var err = function(msg, code) {
+const validatePlace = (place, callback) => {
+  const err = (msg, code) => {
     return callback({
       code: code || 400,
       message: msg
@@ -50,7 +42,7 @@ var validatePlace = function(place, callback) {
   if (!_.isObject(place)) {
     return err('Place must be an object.');
   }
-  var placeId = '';
+  let placeId = '';
   if (place._id) {
     placeId = place._id;
   }
@@ -89,9 +81,9 @@ var validatePlace = function(place, callback) {
   return callback();
 };
 
-var createPlace = function(place, callback) {
-  var self = module.exports;
-  self._validatePlace(place, function(err) {
+const createPlace = (place, callback) => {
+  const self = module.exports;
+  self._validatePlace(place, err => {
     if (err) {
       return callback(err);
     }
@@ -102,7 +94,7 @@ var createPlace = function(place, callback) {
     }
     if (place.contact) {
       // also validates contact if creating
-      people.getOrCreatePerson(place.contact, function(err, doc) {
+      people.getOrCreatePerson(place.contact, (err, doc) => {
         if (err) {
           return callback(err);
         }
@@ -123,10 +115,10 @@ var createPlace = function(place, callback) {
  *
  * Return the id and rev of newly created place.
  */
-var createPlaces = function(place, callback) {
-  var self = module.exports;
+const createPlaces = (place, callback) => {
+  const self = module.exports;
   if (_.isString(place.parent)) {
-    self.getPlace(place.parent, function(err, doc) {
+    self.getPlace(place.parent, (err, doc) => {
       if (err) {
         return callback(err);
       }
@@ -134,7 +126,7 @@ var createPlaces = function(place, callback) {
       self._createPlace(place, callback);
     });
   } else if (_.isObject(place.parent) && !place.parent._id) {
-    self._createPlaces(place.parent, function(err, body) {
+    self._createPlaces(place.parent, (err, body) => {
       if (err) {
         return callback(err);
       }
@@ -150,9 +142,9 @@ var createPlaces = function(place, callback) {
 /*
  * Given a valid place, update editable fields.
  */
-var updateFields = function(place, data) {
-  var ignore = [];
-  _.forEach(PLACE_EDITABLE_FIELDS, function(key) {
+const updateFields = (place, data) => {
+  const ignore = [];
+  PLACE_EDITABLE_FIELDS.forEach(key => {
     if (!_.isUndefined(data[key]) && ignore.indexOf(key) === -1) {
       place[key] = data[key];
     }
@@ -160,28 +152,27 @@ var updateFields = function(place, data) {
   return place;
 };
 
-var updatePlace = function(id, data, callback) {
-  var self = module.exports,
-      props = PLACE_EDITABLE_FIELDS,
-      response = {},
-      series = [],
-      place;
-  if (!_.some(props, function(k) {
+const updatePlace = (id, data, callback) => {
+  const self = module.exports,
+        response = {},
+        series = [];
+  let place;
+  if (!_.some(PLACE_EDITABLE_FIELDS, k => {
     return !_.isNull(data[k]) && !_.isUndefined(data[k]);
   })) {
     return callback({
       code: 400,
-      message: 'One of the following fields are required: ' + props.join(', ')
+      message: 'One of the following fields are required: ' + PLACE_EDITABLE_FIELDS.join(', ')
     });
   }
-  self.getPlace(id, function(err, doc) {
+  self.getPlace(id, (err, doc) => {
     if (err) {
       return callback(err);
     }
     place = self._updateFields(doc, data);
     if (data.contact) {
-      series.push(function(cb) {
-        people.getOrCreatePerson(data.contact, function(err, doc) {
+      series.push(cb => {
+        people.getOrCreatePerson(data.contact, (err, doc) => {
           if (err) {
             return cb(err);
           }
@@ -191,8 +182,8 @@ var updatePlace = function(id, data, callback) {
       });
     }
     if (data.parent) {
-      series.push(function(cb) {
-        self.getOrCreatePlace(data.parent, function(err, doc) {
+      series.push(cb => {
+        self.getOrCreatePlace(data.parent, (err, doc) => {
           if (err) {
             return cb(err);
           }
@@ -201,12 +192,12 @@ var updatePlace = function(id, data, callback) {
         });
       });
     }
-    series.push(function(cb) {
-      self._validatePlace(place, function(err) {
+    series.push(cb => {
+      self._validatePlace(place, err => {
         if (err) {
           return cb(err);
         }
-        db.medic.insert(place, function(err, resp) {
+        db.medic.insert(place, (err, resp) => {
           if (err) {
             return cb(err);
           }
@@ -216,7 +207,7 @@ var updatePlace = function(id, data, callback) {
         });
       });
     });
-    async.series(series, function(err) {
+    async.series(series, err => {
       callback(err, response);
     });
   });
@@ -227,11 +218,11 @@ var updatePlace = function(id, data, callback) {
  * valid.
  * `place` should be an id string, or a new place object. Can't be an existing place object.
  */
-var getOrCreatePlace = function(place, callback) {
-  var self = module.exports;
+const getOrCreatePlace = (place, callback) => {
+  const self = module.exports;
   if (_.isString(place)) {
     // fetch place
-    self.getPlace(place, function(err, doc) {
+    self.getPlace(place, (err, doc) => {
       if (err) {
         return callback(err);
       }
@@ -239,7 +230,7 @@ var getOrCreatePlace = function(place, callback) {
     });
   } else if (_.isObject(place) && !place._rev) {
     // create and return place
-    self._createPlaces(place, function(err, resp) {
+    self._createPlaces(place, (err, resp) => {
       if (err) {
         return callback(err);
       }
