@@ -61,31 +61,31 @@ const validatePlace = (place, callback) => {
     placeId = place._id;
   }
   if (!isAPlace(place)) {
-    return err('Wrong type, object ' + placeId + ' is not a place.');
+    return err(`Wrong type, object ${placeId} is not a place.`);
   }
   if (_.isUndefined(place.name)) {
-    return err('Place ' + placeId + ' is missing a "name" property.');
+    return err(`Place ${placeId} is missing a "name" property.`);
   }
   if (!_.isUndefined(place.reported_date) && !utils.isDateStrValid(place.reported_date)) {
-    return err('Reported date on place ' + placeId + ' is invalid: ' + place.reported_date);
+    return err(`Reported date on place ${placeId} is invalid: ${place.reported_date}`);
   }
   if (!_.isString(place.name)) {
-    return err('Property "name" on place ' + placeId + ' must be a string.');
+    return err(`Property "name" on place ${placeId} must be a string.`);
   }
   if (['clinic', 'health_center'].indexOf(place.type) !== -1) {
     if (!place.parent) {
-      return err('Place ' + placeId + ' is missing a "parent" property.');
+      return err(`Place ${placeId} is missing a "parent" property.`);
     }
     if (place.type === 'clinic' && place.parent.type !== 'health_center') {
-      return err('Clinic ' + placeId + ' should have "health_center" parent type.');
+      return err(`Clinic ${placeId} should have "health_center" parent type.`);
     }
     if (place.type === 'health_center' && place.parent.type !== 'district_hospital') {
-      return err('Health Center ' + placeId + ' should have "district_hospital" parent type.');
+      return err(`Health Center ${placeId} should have "district_hospital" parent type.`);
     }
   }
   if (place.contact) {
     if (!_.isString(place.contact) && !_.isObject(place.contact)) {
-      return err('Property "contact" on place ' + placeId + ' must be an object or string.');
+      return err(`Property "contact" on place ${placeId} must be an object or string.`);
     }
   }
   if (place.parent && !_.isEmpty(place.parent)) {

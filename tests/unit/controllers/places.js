@@ -35,40 +35,45 @@ exports['validatePlace returns error on number argument.'] = test => {
 };
 
 exports['validatePlace returns error when doc is wrong type.'] = test => {
+  examplePlace._id = 'xyz';
   examplePlace.type = 'food';
   controller._validatePlace(examplePlace, err => {
-    test.ok(err.message.indexOf('type') > -1);
+    test.equal(err.message, 'Wrong type, object xyz is not a place.');
     test.done();
   });
 };
 
 exports['validatePlace returns error if clinic is missing parent'] = test => {
+  examplePlace._id = 'xyz';
   delete examplePlace.parent;
   controller._validatePlace(examplePlace, err => {
-    test.ok(err.message.indexOf('parent') > -1);
+    test.equal(err.message, 'Place xyz is missing a "parent" property.');
     test.done();
   });
 };
 
 exports['validatePlace returns error if clinic has null parent'] = test => {
+  examplePlace._id = 'xyz';
   examplePlace.parent = null;
   controller._validatePlace(examplePlace, err => {
-    test.ok(err.message.indexOf('parent') > -1);
+    test.equal(err.message, 'Place xyz is missing a "parent" property.');
     test.done();
   });
 };
 
 exports['validatePlace returns error if health center is missing parent'] = test => {
+  examplePlace._id = 'xyz';
   delete examplePlace.parent;
   examplePlace.type = 'health_center';
   controller._validatePlace(examplePlace, err => {
-    test.ok(err.message.indexOf('parent') > -1);
+    test.equal(err.message, 'Place xyz is missing a "parent" property.');
     test.done();
   });
 };
 
 exports['validatePlace returns error if health center has wrong parent type'] = test => {
   const data = {
+    _id: 'xyz',
     type: 'health_center',
     name: 'St. Paul',
     parent: {
@@ -77,20 +82,19 @@ exports['validatePlace returns error if health center has wrong parent type'] = 
     }
   };
   controller._validatePlace(data, err => {
-    test.ok(err);
-    test.ok(err.message.indexOf('parent') > 1);
+    test.equal(err.message, 'Health Center xyz should have "district_hospital" parent type.');
     test.done();
   });
 };
 
 exports['validatePlace returns error if clinic has wrong parent type'] = test => {
+  examplePlace._id = 'xyz';
   examplePlace.parent = {
     name: 'St Paul Hospital',
     type: 'district_hospital'
   };
   controller._validatePlace(examplePlace, err => {
-    test.ok(err);
-    test.ok(err.message.indexOf('parent') > 1);
+    test.equal(err.message, 'Clinic xyz should have "health_center" parent type.');
     test.done();
   });
 };
