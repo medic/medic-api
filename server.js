@@ -711,6 +711,19 @@ const envVarsCheck = callback => {
   }
 };
 
+const couchDbNoAdminPartyModeCheck = callback => {
+  const noAuthUrl = process.env.COUCH_URL.replace(/\/\/[^@]+@/, '//'),
+        protocol = noAuthUrl.split('://')[0];
+  const net = require(protocol);
+  net.get(noAuthUrl, err => {
+    if (err && err.statusCode === 401) {
+      callback();
+    } else {
+      callback(err || new Error('CouchDB is configured in admin-party mode (ie no auth required)'));
+    }
+  });
+};
+
 const couchDbVersionCheck = callback =>
   db.getCouchDbVersion((err, version) => {
     if (err) {
@@ -726,6 +739,7 @@ const asyncLog = message => async.asyncify(() => console.log(message));
 async.series([
   nodeVersionCheck,
   envVarsCheck,
+  couchDbNoAdminPartyModeCheck,
   couchDbVersionCheck,
   ddocExtraction.run,
   asyncLog('DDoc extraction completed successfully'),
