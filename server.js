@@ -712,14 +712,19 @@ const envVarsCheck = callback => {
 };
 
 const couchDbNoAdminPartyModeCheck = callback => {
-  const noAuthUrl = process.env.COUCH_URL.replace(/\/\/[^@]+@/, '//'),
-        protocol = noAuthUrl.split('://')[0];
-  const net = require(protocol);
-  net.get(noAuthUrl, err => {
-    if (err && err.statusCode === 401) {
+  const url = require('url'),
+        noAuthUrl = url.parse(process.env.COUCH_URL),
+        protocol = noAuthUrl.protocol.replace(':', ''),
+        net = require(protocol);
+
+  delete noAuthUrl.auth;
+
+  net.get(url.format(noAuthUrl), ({statusCode}) => {
+    // We expect to be rejected because we didn't provide auth
+    if (statusCode === 401) {
       callback();
     } else {
-      callback(err || new Error('CouchDB is configured in admin-party mode (ie no auth required)'));
+      callback(new Error('CouchDB Admin Party Mode detected, please disable: https://github.com/medic/medic-webapp#disable-couchdb-admin-party-mode'));
     }
   });
 };
