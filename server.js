@@ -758,7 +758,8 @@ async.series([
   async.asyncify(scheduler.init)
 ], err => {
   if (err) {
-    console.error('Fatal error initialising medic-api', err);
+    console.error('Fatal error initialising medic-api');
+    console.error(err);
     process.exit(1);
   }
 

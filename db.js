@@ -1,7 +1,8 @@
 var path = require('path'),
     url = require('url'),
     nano = require('nano'),
-    request = require('request');
+    request = require('request'),
+    async = require('async');
 
 var couchUrl = process.env.COUCH_URL;
 var luceneUrl = process.env.LUCENE_URL;
@@ -116,6 +117,31 @@ if (couchUrl) {
   };
 
   module.exports.sanitizeResponse = sanitizeResponse;
+
+  const runBatch = (query, iteratee, batchSize, skip, callback) => {
+    query(skip, (err, response) => {
+      if (err) {
+        return callback(err);
+      }
+      console.log(`        Processing ${skip} to ${skip + batchSize} docs of ${response.total_rows} total`);
+      iteratee(response.rows, err => {
+        const keepGoing = response.total_rows > (skip + batchSize);
+        callback(err, keepGoing);
+      });
+    });
+  };
+
+  module.exports.batch = (query, iteratee, batchSize, callback) => {
+    let skip = 0;
+    async.doWhilst(
+      callback => runBatch(query, iteratee, batchSize, skip, callback),
+      keepGoing => {
+        skip += batchSize;
+        return keepGoing;
+      },
+      callback
+    );
+  };
 } else if (process.env.UNIT_TEST_ENV) {
   // Running tests only
   module.exports = {
