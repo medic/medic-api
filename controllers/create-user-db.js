@@ -12,7 +12,7 @@ const createDatabase = (username, callback) => {
     const params = {
       db: dbName,
       path: '/_security',
-      method: 'put',
+      method: 'PUT',
       body: {
         admins: { names: [ username ], roles: [] },
         members: { names: [], roles:[] }

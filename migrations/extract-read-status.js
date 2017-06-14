@@ -18,7 +18,7 @@ const createDb = (username, dbName, callback) => {
     const params = {
       db: dbName,
       path: '/_security',
-      method: 'put',
+      method: 'PUT',
       body: {
         admins: { names: [ username ], roles: [] },
         members: { names: [], roles:[] }
@@ -33,7 +33,7 @@ const ensureDbExists = (username, dbName, callback) => {
     if (err && err.statusCode === 404) {
       return createDb(username, dbName, callback);
     }
-    callback();
+    callback(err);
   });
 };
 

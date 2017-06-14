@@ -40,7 +40,7 @@ exports['creates the database and sets permissions'] = test => {
     const requestParams = request.args[0][0];
     test.equals(requestParams.db, 'medic-user-gareth-meta');
     test.equals(requestParams.path, '/_security');
-    test.equals(requestParams.method, 'put');
+    test.equals(requestParams.method, 'PUT');
     test.equals(requestParams.body.admins.names[0], 'gareth');
     test.done();
   });

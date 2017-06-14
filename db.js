@@ -131,6 +131,17 @@ if (couchUrl) {
     });
   };
 
+  /**
+   * Run an operation over all documents returned from the query in batches.
+   *
+   * query function     Called with a skip number and a callback to
+   *                    invoke with the next batch.
+   * iteratee function  Called with an array of rows and a callback to
+   *                    invoke when rows have been processed and persisted.
+   * batchSize int      The size each batch should be.
+   * callback function  Called when no more rows are returned from the
+   *                    query function.
+   */
   module.exports.batch = (query, iteratee, batchSize, callback) => {
     let skip = 0;
     async.doWhilst(
