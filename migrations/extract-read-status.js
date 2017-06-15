@@ -29,9 +29,9 @@ const saveReadStatusDocs = (username, docs, callback) => {
   });
 };
 
-const extract = (rows, callback) => {
+const extract = (response, callback) => {
   const toSave = {};
-  rows.forEach(row => {
+  response.rows.forEach(row => {
     const doc = row.doc;
     if (doc.read) {
       doc.read.forEach(user => {

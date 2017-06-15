@@ -124,7 +124,7 @@ if (couchUrl) {
         return callback(err);
       }
       console.log(`        Processing ${skip} to ${skip + batchSize} docs of ${response.total_rows} total`);
-      iteratee(response.rows, err => {
+      iteratee(response, err => {
         const keepGoing = response.total_rows > (skip + batchSize);
         callback(err, keepGoing);
       });
@@ -136,7 +136,7 @@ if (couchUrl) {
    *
    * query function     Called with a skip number and a callback to
    *                    invoke with the next batch.
-   * iteratee function  Called with an array of rows and a callback to
+   * iteratee function  Called with the query response and a callback to
    *                    invoke when rows have been processed and persisted.
    * batchSize int      The size each batch should be.
    * callback function  Called when no more rows are returned from the
