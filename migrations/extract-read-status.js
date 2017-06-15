@@ -1,8 +1,7 @@
 const db = require('../db'),
       async = require('async'),
+      userDb = require('../lib/user-db'),
       BATCH_SIZE = 100;
-
-const getDbName = username => `medic-user-${username}-meta`;
 
 const createReadStatusDoc = record => {
   const type = record.form ? 'report' : 'message';
@@ -10,35 +9,17 @@ const createReadStatusDoc = record => {
   return { _id: id };
 };
 
-const createDb = (username, dbName, callback) => {
-  db.db.create(dbName, err => {
-    if (err) {
-      return callback(err);
-    }
-    const params = {
-      db: dbName,
-      path: '/_security',
-      method: 'PUT',
-      body: {
-        admins: { names: [ username ], roles: [] },
-        members: { names: [], roles:[] }
-      }
-    };
-    db.request(params, callback);
-  });
-};
-
 const ensureDbExists = (username, dbName, callback) => {
   db.db.get(dbName, err => {
     if (err && err.statusCode === 404) {
-      return createDb(username, dbName, callback);
+      return userDb.create(username, callback);
     }
     callback(err);
   });
 };
 
 const saveReadStatusDocs = (username, docs, callback) => {
-  const userDbName = getDbName(username);
+  const userDbName = userDb.getDbName(username);
   ensureDbExists(username, userDbName, err => {
     if (err) {
       return callback(err);
