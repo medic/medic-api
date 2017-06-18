@@ -156,11 +156,11 @@ var runBatch = function(skip, callback) {
     if (err) {
       return callback(err);
     }
-    console.log('        Processing ' + skip + ' to ' + (skip + BATCH_SIZE) + ' docs of ' + result.total_rows + ' total');
+    console.log(`        Processing doc ${skip}.`);
     var docs = _.pluck(result.rows, 'doc');
     associate(docs, function(err) {
-      var keepGoing = result.total_rows > (skip + BATCH_SIZE);
-      callback(err, keepGoing);
+      // keep going if at least one row was found last time
+      callback(err, !!result.rows.length);
     });
   });
 };

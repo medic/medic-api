@@ -494,32 +494,40 @@ exports['run does nothing if no data records'] = function(test) {
 
 exports['run does nothing if outgoing message already migrated'] = function(test) {
   var rows = [ { doc: { tasks: [ { messages: [ { contact: { _id: 'a' } } ] } ] } } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
+    test.equals(getView.callCount, 2);
+    test.equals(getView.args[0][2].skip, 0);
+    test.equals(getView.args[1][2].skip, 100);
     test.done();
   });
 };
 
 exports['run does nothing if outgoing message has no facility'] = function(test) {
   var rows = [ { doc: { tasks: [ { messages: [ { to: '+6427555', } ] } ] } } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
+    test.equals(getView.callCount, 2);
     test.done();
   });
 };
 
 exports['run migrates outgoing message'] = function(test) {
   var rows = [ { doc: clone(outgoingMessage) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+    var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get').callsArgWith(1, null, contact);
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
+    test.equals(getView.callCount, 2);
     test.equals(getDoc.callCount, 1);
     test.equals(getDoc.args[0][0], contact._id);
     test.equals(bulk.callCount, 1);
@@ -532,12 +540,14 @@ exports['run migrates outgoing message'] = function(test) {
 
 exports['run migrates outgoing message to facility without contact id - #2545'] = function(test) {
   var rows = [ { doc: clone(outgoingMessageWithoutContactId) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+    var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get').callsArgWith(1, null, clinic);
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
+    test.equals(getView.callCount, 2);
     test.equals(getDoc.callCount, 1);
     test.equals(getDoc.args[0][0], clinic._id);
     test.equals(bulk.callCount, 1);
@@ -552,11 +562,13 @@ exports['run migrates outgoing message to facility without contact id - #2545'] 
 
 exports['run migrates outgoing message to person'] = function(test) {
   var rows = [ { doc: clone(outgoingMessageToPerson) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+    var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
+    test.equals(getView.callCount, 2);
     test.equals(bulk.callCount, 1);
     var message = bulk.args[0][0].docs[0].tasks[0].messages[0];
     test.equals(message.facility, null);
@@ -567,11 +579,13 @@ exports['run migrates outgoing message to person'] = function(test) {
 
 exports['run does nothing if incoming message already migrated'] = function(test) {
   var rows = [ { doc: { sms_message: { message: 'incoming', }, contact: { _id: 'a' } } } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+    var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var bulk = sinon.stub(db.medic, 'bulk');
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
+    test.equals(getView.callCount, 2);
     test.equals(bulk.callCount, 0);
     test.done();
   });
@@ -579,11 +593,12 @@ exports['run does nothing if incoming message already migrated'] = function(test
 
 exports['run does nothing if incoming message has no facility'] = function(test) {
   var rows = [ { doc: { sms_message: { message: 'incoming' } } } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+    var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var bulk = sinon.stub(db.medic, 'bulk');
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(bulk.callCount, 0);
     test.done();
   });
@@ -591,12 +606,13 @@ exports['run does nothing if incoming message has no facility'] = function(test)
 
 exports['run migrates incoming message'] = function(test) {
   var rows = [ { doc: clone(incomingMessage) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+    var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get').callsArgWith(1, null, clone(contact));
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(getDoc.callCount, 1);
     test.equals(getDoc.args[0][0], contact._id);
     test.equals(bulk.callCount, 1);
@@ -608,12 +624,13 @@ exports['run migrates incoming message'] = function(test) {
 
 exports['run migrates incoming report'] = function(test) {
   var rows = [ { doc: clone(incomingReport) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get').callsArgWith(1, null, clone(contact));
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(getDoc.callCount, 1);
     test.equals(getDoc.args[0][0], contact._id);
     test.equals(bulk.callCount, 1);
@@ -625,12 +642,13 @@ exports['run migrates incoming report'] = function(test) {
 
 exports['run migrates incoming report with no contact id - #2970'] = function(test) {
   var rows = [ { doc: clone(incomingReportWithoutContactId) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get').callsArgWith(1, null, clone(clinic));
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(getDoc.callCount, 1);
     test.equals(getDoc.args[0][0], clinic._id);
     test.equals(bulk.callCount, 1);
@@ -649,7 +667,9 @@ exports['run migrates multiple data records'] = function(test) {
     { doc: clone(incomingMessage) },
     { doc: clone(incomingReport) }
   ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get');
   getDoc.onCall(0).callsArgWith(1, null, contact);
   getDoc.onCall(1).callsArgWith(1, null, contact);
@@ -657,7 +677,6 @@ exports['run migrates multiple data records'] = function(test) {
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(getDoc.callCount, 3);
     test.equals(getDoc.args[0][0], contact._id);
     test.equals(getDoc.args[1][0], contact._id);
@@ -669,14 +688,15 @@ exports['run migrates multiple data records'] = function(test) {
 
 exports['run migrates outgoing message with deleted contact'] = function(test) {
   var rows = [ { doc: clone(outgoingMessage) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get');
   getDoc.onCall(0).callsArgWith(1, { statusCode: 404 });
   getDoc.onCall(1).callsArgWith(1, null, clinic);
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(getDoc.callCount, 2);
     test.equals(getDoc.args[0][0], contact._id);
     test.equals(getDoc.args[1][0], clinic._id);
@@ -692,14 +712,15 @@ exports['run migrates outgoing message with deleted contact'] = function(test) {
 
 exports['run migrates incoming message with deleted contact and deleted clinic'] = function(test) {
   var rows = [ { doc: clone(incomingMessage) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get');
   getDoc.onCall(0).callsArgWith(1, { statusCode: 404 });
   getDoc.onCall(1).callsArgWith(1, { statusCode: 404 });
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(getDoc.callCount, 2);
     test.equals(getDoc.args[0][0], contact._id);
     test.equals(getDoc.args[1][0], clinic._id);
@@ -713,14 +734,15 @@ exports['run migrates incoming message with deleted contact and deleted clinic']
 
 exports['run migrates incoming message with deleted contact and clinic has no contact'] = function(test) {
   var rows = [ { doc: clone(incomingMessage) } ];
-  var getView = sinon.stub(db.medic, 'view').callsArgWith(3, null, { rows: rows });
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows });
+  getView.onCall(1).callsArgWith(3, null, { rows: [] });
   var getDoc = sinon.stub(db.medic, 'get');
   getDoc.onCall(0).callsArgWith(1, { statusCode: 404 });
   getDoc.onCall(1).callsArgWith(1, null, { _id: 'a' });
   var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
   migration.run(function(err) {
     test.equals(err, undefined);
-    test.equals(getView.callCount, 1);
     test.equals(getDoc.callCount, 2);
     test.equals(getDoc.args[0][0], contact._id);
     test.equals(getDoc.args[1][0], clinic._id);
@@ -728,6 +750,31 @@ exports['run migrates incoming message with deleted contact and clinic has no co
     var message = bulk.args[0][0].docs[0];
     test.equals(message.related_entities, null);
     test.equals(message.contact, null);
+    test.done();
+  });
+};
+
+exports['run keeps iterating until the view returns no results'] = function(test) {
+  var rows1 = [ { doc: clone(incomingMessage) } ];
+  var rows2 = [ { doc: clone(outgoingMessage) } ];
+  var getView = sinon.stub(db.medic, 'view');
+  getView.onCall(0).callsArgWith(3, null, { rows: rows1 });
+  getView.onCall(1).callsArgWith(3, null, { rows: rows2 });
+  getView.onCall(2).callsArgWith(3, null, { rows: [] });
+  var getDoc = sinon.stub(db.medic, 'get');
+  getDoc.onCall(0).callsArgWith(1, null, clone(contact));
+  getDoc.onCall(1).callsArgWith(1, null, clone(contact));
+  var bulk = sinon.stub(db.medic, 'bulk').callsArg(1);
+  migration.run(function(err) {
+    test.equals(err, undefined);
+    test.equals(getView.callCount, 3);
+    test.equals(bulk.callCount, 2);
+    var message1 = bulk.args[0][0].docs[0];
+    test.equals(message1.related_entities, null);
+    test.deepEqual(message1.contact, contact);
+    var message2 = bulk.args[1][0].docs[0].tasks[0].messages[0];
+    test.equals(message2.facility, null);
+    test.deepEqual(message2.contact, contact);
     test.done();
   });
 };
