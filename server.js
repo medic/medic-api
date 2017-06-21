@@ -158,14 +158,12 @@ app.get('/api/auth/:path', function(req, res) {
 });
 
 app.post('/api/upgrade', jsonParser, (req, res) => {
-  auth.check(req, '_admin', null, err => {
+  auth.check(req, '_admin', null, (err, { user: username }) => {
     if (err) {
       return serverUtils.error(err, req, res);
     }
-    upgrade(req.body.version)
-      .then(() => {
-        res.json({ ok: true });
-      })
+    upgrade(req.body.version, username)
+      .then(() => res.json({ ok: true }))
       .catch(err => serverUtils.error(err, req, res));
   });
 });

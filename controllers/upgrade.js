@@ -6,7 +6,7 @@ const buildDb = new PouchDB(buildDbUrl);
 const targetDbUrl = process.env.COUCH_URL;
 const targetDb = new PouchDB(targetDbUrl);
 
-module.exports = version => {
+module.exports = (version, username) => {
   console.log(`Upgrading to ${version}…`);
   return buildDb
     .get(version, { attachments:true })
@@ -18,6 +18,13 @@ module.exports = version => {
           newDdoc.app_settings = oldDdoc.app_settings;
           newDdoc._id = oldDdoc._id;
           newDdoc._rev = oldDdoc._rev;
+
+          newDdoc.deploy_info = {
+            timestamp: new Date().toString(),
+            user: username,
+            version: version,
+          };
+
           return targetDb.put(newDdoc)
             .then(ret => console.log('Put newDdoc') || ret);
         }))
