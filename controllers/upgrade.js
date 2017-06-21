@@ -6,7 +6,7 @@ const targetDbUrl = process.env.COUCH_URL;
 const targetDb = new PouchDB(targetDbUrl);
 
 module.exports = version => {
-  console.log(`Upgrading ${targetDbUrl} to ${version} from ${buildDbUrl}…`);
+  console.log(`Upgrading to ${version}…`);
   return buildDb
     .get(version, { attachments:true })
     .then(newDdoc => console.log('Fetched newDdoc') || newDdoc)
