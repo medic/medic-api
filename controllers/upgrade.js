@@ -1,6 +1,6 @@
 const PouchDB = require('pouchdb');
 
-const buildDbUrl = 'https://staging.dev.medicmobile.org/builds';
+const buildDbUrl = 'https://staging.dev.medicmobile.org/_couch/builds';
 const buildDb = new PouchDB(buildDbUrl);
 const targetDbUrl = process.env.COUCH_URL;
 const targetDb = new PouchDB(targetDbUrl);
