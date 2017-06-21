@@ -1,4 +1,5 @@
-const PouchDB = require('pouchdb');
+const PouchDB = require('pouchdb-core');
+PouchDB.plugin(require('pouchdb-adapter-http'));
 
 const buildDbUrl = 'https://staging.dev.medicmobile.org/_couch/builds';
 const buildDb = new PouchDB(buildDbUrl);
