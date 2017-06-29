@@ -39,6 +39,8 @@ const getTaskAndDocForMessage = function (messageId, docs) {
       return [task, doc._id];
     }
   }
+
+  return [null,null];
 };
 
 /*
