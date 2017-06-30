@@ -36,11 +36,11 @@ const getTaskAndDocForMessage = function (messageId, docs) {
   for (const doc of docs) {
     const task = getTaskForMessage(messageId, doc);
     if (task) {
-      return [task, doc._id];
+      return {task: task, docId: doc._id};
     }
   }
 
-  return [null,null];
+  return {};
 };
 
 /*
@@ -62,7 +62,7 @@ const applyTaskStateChangesToDocs = (taskStateChanges, docs) => {
       throw Error('Message id required');
     }
 
-    const [task, docId] = getTaskAndDocForMessage(taskStateChange.messageId, docs);
+    const {task, docId} = getTaskAndDocForMessage(taskStateChange.messageId, docs);
 
     if (!task) {
       throw Error(`Message not found: ${taskStateChange.messageId}`);
