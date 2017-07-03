@@ -218,6 +218,15 @@ app.post('/api/sms', jsonParser, function(req, res) {
     if (err) {
       return serverUtils.error(err, req, res);
     }
+
+    var contype = req.headers['content-type'];
+    if (!contype || contype !== 'application/json') {
+      return serverUtils.error({
+        code: 400,
+        message: 'Content-Type must be application/json'
+      }, req, res);
+    }
+
     smsGateway.post(req, function(err, obj) {
       if (err) {
         return serverUtils.error(err, req, res);
