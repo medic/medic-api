@@ -59,13 +59,13 @@ const applyTaskStateChangesToDocs = (taskStateChanges, docs) => {
 
   taskStateChanges.forEach(taskStateChange => {
     if (!taskStateChange.messageId) {
-      throw Error('Message id required');
+      throw {code: 400, message: 'Message id required'};
     }
 
     const {task, docId} = getTaskAndDocForMessage(taskStateChange.messageId, docs);
 
     if (!task) {
-      throw Error(`Message not found: ${taskStateChange.messageId}`);
+      throw {code: 404, message: `Message not found: ${taskStateChange.messageId}`};
     }
 
     fillTaskStateChangeByDocId(taskStateChange, docId);

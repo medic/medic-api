@@ -180,6 +180,7 @@ exports['updateMessageTaskStates throws an error if it cant find the message'] =
   ], (err) => {
     test.ok(err);
 
+    test.equal(err.code, 404);
     test.equal(err.message, `Message not found: testMessageId2`);
 
     test.done();
