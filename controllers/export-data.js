@@ -30,7 +30,7 @@ const findContact = (contactRows, id) => {
   return id && contactRows.find(contactRow => contactRow.id === id);
 };
 
-const hydrateParents = (rows, callback) => {
+const hydrateDataRecords = (rows, callback) => {
   const contactIds = [];
   rows.forEach(row => {
     let parent = row.doc.contact;
@@ -73,7 +73,7 @@ var exportTypes = {
     view: 'data_records',
     index: 'data_records',
     orderBy: '\\reported_date<date>',
-    hydrate: hydrateParents,
+    hydrate: hydrateDataRecords,
     generate: function(rows, options) {
 
       var userDefinedColumns = !!options.columns;
@@ -155,7 +155,7 @@ var exportTypes = {
     view: 'data_records',
     index: 'data_records',
     orderBy: '\\reported_date<date>',
-    hydrate: hydrateParents,
+    hydrate: hydrateDataRecords,
     generate: function(rows, options) {
       if (!options.columns) {
         options.columns = createColumnModels([
@@ -585,10 +585,7 @@ var getRecordsView = function(type, params, callback) {
   actual.view(type.ddoc || 'medic', type.view, options, callback);
 };
 
-const hydrate = (type, err, rows, callback) => {
-  if (err) {
-    return callback(err);
-  }
+const hydrate = (type, rows, callback) => {
   if (type.hydrate) {
     return type.hydrate(rows, callback);
   }
@@ -604,7 +601,10 @@ var getRecords = function(type, params, callback) {
       return callback(new Error('This export cannot handle "query" param'));
     }
     return getRecordsFti(type, params, (err, response) => {
-      hydrate(type, err, response.rows, err => callback(err, response));
+      if (err) {
+        return callback(err);
+      }
+      hydrate(type, response.rows, err => callback(err, response));
     });
   }
   if (!type.view) {
@@ -614,7 +614,7 @@ var getRecords = function(type, params, callback) {
     if (err) {
       return callback(err);
     }
-    hydrate(type, err, response.rows, err => callback(err, response));
+    hydrate(type, response.rows, err => callback(err, response));
   });
 };
 
