@@ -26,11 +26,54 @@ var safeStringify = function(obj) {
   }
 };
 
+const findContact = (contactRows, id) => {
+  return id && contactRows.find(contactRow => contactRow.id === id);
+};
+
+const hydrateParents = (rows, callback) => {
+  const contactIds = [];
+  rows.forEach(row => {
+    let parent = row.doc.contact;
+    while(parent) {
+      if (parent._id) {
+        contactIds.push(parent._id);
+      }
+      parent = parent.parent;
+    }
+  });
+  if (!contactIds.length) {
+    return callback();
+  }
+  db.medic.fetch({ keys: contactIds }, (err, contactResponse) => {
+    if (err) {
+      return callback(err);
+    }
+    rows.forEach(row => {
+      const contactId = row.doc.contact && row.doc.contact._id;
+      const contact = findContact(contactResponse.rows, contactId);
+      if (contact) {
+        row.doc.contact = contact.doc;
+      }
+      let parent = row.doc.contact;
+      while(parent) {
+        const parentId = parent.parent && parent.parent._id;
+        const found = findContact(contactResponse.rows, parentId);
+        if (found) {
+          parent.parent = found.doc;
+        }
+        parent = parent.parent;
+      }
+    });
+    callback();
+  });
+};
+
 var exportTypes = {
   forms: {
     view: 'data_records',
     index: 'data_records',
     orderBy: '\\reported_date<date>',
+    hydrate: hydrateParents,
     generate: function(rows, options) {
 
       var userDefinedColumns = !!options.columns;
@@ -44,7 +87,6 @@ var exportTypes = {
           'from',
           'contact.name',
           'contact.parent.name',
-          'contact.parent.parent.contact.name',
           'contact.parent.parent.name',
           'contact.parent.parent.parent.name'
         ], options);
@@ -113,6 +155,7 @@ var exportTypes = {
     view: 'data_records',
     index: 'data_records',
     orderBy: '\\reported_date<date>',
+    hydrate: hydrateParents,
     generate: function(rows, options) {
       if (!options.columns) {
         options.columns = createColumnModels([
@@ -122,7 +165,6 @@ var exportTypes = {
           'from',
           'contact.name',
           'contact.parent.name',
-          'contact.parent.parent.contact.name',
           'contact.parent.parent.name',
           'contact.parent.parent.parent.name',
           'task.type',
@@ -543,6 +585,16 @@ var getRecordsView = function(type, params, callback) {
   actual.view(type.ddoc || 'medic', type.view, options, callback);
 };
 
+const hydrate = (type, err, rows, callback) => {
+  if (err) {
+    return callback(err);
+  }
+  if (type.hydrate) {
+    return type.hydrate(rows, callback);
+  }
+  callback(null, rows);
+};
+
 var getRecords = function(type, params, callback) {
   if (_.isFunction(type.getRecords)) {
     return type.getRecords(callback);
@@ -551,12 +603,19 @@ var getRecords = function(type, params, callback) {
     if (!type.index) {
       return callback(new Error('This export cannot handle "query" param'));
     }
-    return getRecordsFti(type, params, callback);
+    return getRecordsFti(type, params, (err, response) => {
+      hydrate(type, err, response.rows, err => callback(err, response));
+    });
   }
   if (!type.view) {
     return callback(new Error('This export must have a "query" param'));
   }
-  getRecordsView(type, params, callback);
+  getRecordsView(type, params, (err, response) => {
+    if (err) {
+      return callback(err);
+    }
+    hydrate(type, err, response.rows, err => callback(err, response));
+  });
 };
 
 var getOptions = function(params) {
@@ -611,7 +670,6 @@ module.exports = {
       if (err) {
         return callback(err);
       }
-
       var options = getOptions(params);
       var tabs = type.generate(response.rows, options);
 
