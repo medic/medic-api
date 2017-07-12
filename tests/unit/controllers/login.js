@@ -191,9 +191,9 @@ exports['post logs in successfully'] = test => {
   test.equals(cookie.callCount, 2);
   test.equals(cookie.args[0][0], 'AuthSession');
   test.equals(cookie.args[0][1], 'abc');
-  test.deepEqual(cookie.args[0][2], { sameSite: 'lax', secure: true, httpOnly: true });
+  test.deepEqual(cookie.args[0][2], { sameSite: 'lax', secure: false, httpOnly: true });
   test.equals(cookie.args[1][0], 'userCtx');
   test.equals(cookie.args[1][1], JSON.stringify(userCtx));
-  test.deepEqual(cookie.args[1][2], { sameSite: 'lax', secure: true, maxAge: 31536000000 });
+  test.deepEqual(cookie.args[1][2], { sameSite: 'lax', secure: false, maxAge: 31536000000 });
   test.done();
 };

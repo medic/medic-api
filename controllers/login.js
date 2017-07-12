@@ -7,7 +7,8 @@ const fs = require('fs'),
       db = require('../db'),
       config = require('../config'),
       SESSION_COOKIE_RE = /AuthSession\=([^;]*);/,
-      ONE_YEAR = 31536000000;
+      ONE_YEAR = 31536000000,
+      production = process.env.NODE_ENV === 'production';
 
 let loginTemplate;
 
@@ -104,22 +105,22 @@ const createSession = (req, callback) => {
   }, callback);
 };
 
-const getCookieOptions = req => {
+const getCookieOptions = () => {
   return {
     sameSite: 'lax', // prevents the browser from sending this cookie along with cross-site requests
-    secure: req.hostname !== 'localhost' // only transmit when requesting via https unless in development
+    secure: production // only transmit when requesting via https unless in development mode
   };
 };
 
-const setSessionCookie = (req, res, cookie) => {
+const setSessionCookie = (res, cookie) => {
   const sessionId = SESSION_COOKIE_RE.exec(cookie)[1];
-  const options = getCookieOptions(req);
+  const options = getCookieOptions();
   options.httpOnly = true; // don't allow javascript access to stop xss
   res.cookie('AuthSession', sessionId, options);
 };
 
-const setUserCtxCookie = (req, res, userCtx) => {
-  const options = getCookieOptions(req);
+const setUserCtxCookie = (res, userCtx) => {
+  const options = getCookieOptions();
   options.maxAge = ONE_YEAR;
   res.cookie('userCtx', JSON.stringify(userCtx), options);
 };
@@ -137,8 +138,8 @@ const setCookies = (req, res, sessionRes) => {
       res.status(401).json({ error: 'Error getting authCtx' });
       return;
     }
-    setSessionCookie(req, res, sessionCookie);
-    setUserCtxCookie(req, res, userCtx);
+    setSessionCookie(res, sessionCookie);
+    setUserCtxCookie(res, userCtx);
     res.json({ success: true });
   });
 };
@@ -150,7 +151,7 @@ module.exports = {
       const redirect = safePath(req.query.redirect);
       if (!err) {
         // already logged in
-        setUserCtxCookie(req, res, userCtx);
+        setUserCtxCookie(res, userCtx);
         res.redirect(redirect);
         return;
       }
