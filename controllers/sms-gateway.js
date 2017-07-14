@@ -112,8 +112,6 @@ module.exports = {
       getOutgoing
     ], (err, [,,outgoingMessages]) => {
       if (err) {
-        console.error('There was an error processing the following SMS POST request');
-        console.error(JSON.stringify(req.body));
         return callback(err);
       }
       callback(null, { messages: outgoingMessages });
