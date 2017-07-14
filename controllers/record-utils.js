@@ -1,7 +1,7 @@
 var _ = require('underscore'),
     db = require('../db');
 
-var exists = function(val) {
+var empty = function(val) {
   return val !== '' && typeof val !== 'undefined';
 };
 
@@ -20,11 +20,11 @@ var request = function(opts, callback) {
 };
 
 var createByForm = function(data, callback) {
-  var required = ['message', 'from'],
-      optional = ['reported_date', 'locale', 'gateway_ref'];
+  var required = ['from'],
+      optional = ['message', 'reported_date', 'locale', 'gateway_ref'];
   for (var k in required) {
     if (required.hasOwnProperty(k)) {
-      if (!exists(data[required[k]])) {
+      if (!empty(data[required[k]])) {
         return callback(new Error('Missing required field: ' + required[k]));
       }
     }
@@ -41,12 +41,12 @@ var createRecordByJSON = function(data, callback) {
   var required = ['from', 'form'],
       optional = ['reported_date', 'locale'];
   // check required fields are in _meta property
-  if (!exists(data._meta)) {
+  if (!empty(data._meta)) {
     return callback(new Error('Missing _meta property.'));
   }
   for (var k in required) {
     if (required.hasOwnProperty(k)) {
-      if (!exists(data._meta[required[k]])) {
+      if (!empty(data._meta[required[k]])) {
         return callback(new Error('Missing required field: ' + required[k]));
       }
     }
