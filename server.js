@@ -67,7 +67,7 @@ const handleJsonRequest = (method, path, callback) => {
 };
 ['delete', 'post', 'put'].forEach(method => {
   app[method + 'Json'] = (path, callback) => {
-    return handleJsonRequest('post', path, callback);
+    return handleJsonRequest(method, path, callback);
   };
 });
 
