@@ -22,7 +22,7 @@ describe('server', () => {
 
           // then
           assert.equal('400 - "Content-Type must be application/json"', e.message);
-          assert.equal(400, statusCode);
+          assert.equal(400, e.statusCode);
 
         });
 
