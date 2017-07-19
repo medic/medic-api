@@ -16,7 +16,7 @@ describe('server', () => {
       };
 
       // when
-      request(opts)
+      return request(opts)
         .then(assert.fail)
         .catch(e => {
 
