@@ -21,7 +21,7 @@ describe('server', () => {
         .catch(e => {
 
           // then
-          assert.equal('Content-Type must be application/json', e.message);
+          assert.equal('400 - "Content-Type must be application/json"', e.message);
           assert.equal(400, statusCode);
 
         });
