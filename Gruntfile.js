@@ -9,8 +9,8 @@ module.exports = function(grunt) {
         'tests/unit/**/*.js',
         '!tests/unit/utils.js',
         '!tests/unit/integration/**/*.js',
-        '!tests/unit/e2e/*.spec.js'
-        '!tests/unit/e2e/**/*.js'
+        '!tests/unit/e2e/*.spec.js',
+        '!tests/unit/e2e/**/*.js',
       ]
     },
     jshint: {
