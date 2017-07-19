@@ -1,10 +1,9 @@
-const assert = require('chai').assert,
-cosnt request = require('request-promise-native'),
-const utils = require('./utils');
+const assert = require('chai').assert;
+const request = require('request-promise-native');
 
 describe('server', () => {
 
-  describe('JSON-only endpoints', () =>
+  describe('JSON-only endpoints', () => {
 
     it('should require application/json Content-Type header', () => {
 
@@ -25,6 +24,9 @@ describe('server', () => {
           assert.equal(1, e);
 
         });
+
     });
+
+  });
 
 });
