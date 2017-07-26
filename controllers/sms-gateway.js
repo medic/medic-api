@@ -23,11 +23,13 @@ const _ = require('underscore'),
 // See: https://github.com/medic/medic-webapp/issues/3019
 // Specifically, this should be in a new repo that we can pull in via npm
 function saveToDb(message, callback) {
-  recordUtils.createByForm({
-    from: message.from,
-    message: message.content,
-    gateway_ref: message.id,
-  }, callback);
+  if(message.from && message.content){
+    recordUtils.createByForm({
+      from: message.from,
+      message: message.content,
+      gateway_ref: message.id,
+    }, callback);
+  }
 }
 
 function mapStateFields(update) {
