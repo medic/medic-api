@@ -25,7 +25,7 @@ const _ = require('underscore'),
 function saveToDb(message, callback) {
   recordUtils.createByForm({
     from: message.from,
-    message: message.content,
+    message: message.content || '',
     gateway_ref: message.id,
   }, callback);
 }
