@@ -337,7 +337,7 @@ var getReplicationKey = function(doc) {
       doc.type === 'translations') {
     return [ '_all', {} ];
   }
-  var getSubject = function(doc) {
+  var getSubject = function() {
     if (doc.form) {
       // report
       if (doc.errors && doc.errors.length) {
@@ -369,7 +369,7 @@ var getReplicationKey = function(doc) {
   };
   switch (doc.type) {
     case 'data_record':
-      var subject = getSubject(doc);
+      var subject = getSubject();
       var value = {};
       if (doc.form && doc.contact) {
         value.submitter = doc.contact._id;
