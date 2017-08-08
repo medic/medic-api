@@ -5,10 +5,8 @@ var _ = require('underscore'),
 var BATCH_SIZE = 100;
 
 var registrationIdsWithNoPatientContacts = function(batch, callback) {
-  db.medic.view('medic', 'patient_by_patient_shortcode_id', {
-      keys: batch.map(function(row) {
-        return row[0];
-      })
+  db.medic.view('medic-client', 'contacts_by_reference', {
+      keys: batch.map(row => [ 'shortcode', row[0] ])
     }, function(err, results) {
       if (err) {
         return callback(err);
