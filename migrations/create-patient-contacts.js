@@ -12,7 +12,7 @@ var registrationIdsWithNoPatientContacts = function(batch, callback) {
         return callback(err);
       }
 
-      var existingContactShortcodes = _.pluck(results.rows, 'key');
+      var existingContactShortcodes = results.rows.map(row => row.key[1]);
 
       var registrationIdsToConsider = _.chain(batch)
         .filter(function(row) {
