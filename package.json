@@ -41,11 +41,11 @@
     "grunt-exec": "^1.0.1",
     "grunt-mocha-test": "^0.13.2",
     "mocha": "^3.0.2",
-    "nodeunit": "latest",
+    "nodeunit": "0.11.0",
     "pouchdb-adapter-http": "^6.2.0",
     "pouchdb-core": "^6.2.0",
     "request-promise-native": "^1.0.3",
-    "sinon": "latest"
+    "sinon": "^2.3.8"
   },
   "scripts": {
     "start": "node server.js",
