@@ -41,6 +41,7 @@
     "grunt-env": "^0.4.4",
     "grunt-exec": "^2.0.0",
     "grunt-mocha-test": "^0.13.2",
+    "grunt-nsp": "^2.3.1",
     "mocha": "^3.0.2",
     "nodeunit": "^0.11.0",
     "pouchdb-adapter-http": "^6.2.0",

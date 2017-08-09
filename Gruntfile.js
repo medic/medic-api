@@ -4,6 +4,9 @@ module.exports = function(grunt) {
 
   // Project configuration
   grunt.initConfig({
+    nsp: {
+      package: grunt.file.readJSON('package.json')
+    },
     nodeunit: {
       all: [
         'tests/unit/**/*.js',
@@ -73,6 +76,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-env');
   grunt.loadNpmTasks('grunt-exec');
   grunt.loadNpmTasks('grunt-mocha-test');
+  grunt.loadNpmTasks('grunt-nsp');
 
   // Default tasks
   grunt.registerTask('test', [
@@ -89,6 +93,7 @@ module.exports = function(grunt) {
   // Non-default tasks
   grunt.registerTask('ci', [
     'jshint',
+    'nsp',
     'test_unit',
     // don't run integration tests on CI - they will run from the webapp project
   ]);
