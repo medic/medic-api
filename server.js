@@ -175,7 +175,7 @@ app.get('/api/auth/:path', function(req, res) {
 });
 
 app.post('/api/upgrade', jsonParser, (req, res) => {
-  auth.check(req, '_admin', null, (err, userCtx) => {
+  auth.isDbAdmin((err, userCtx) => {
     if (err) {
       return serverUtils.error(err, req, res);
     }
