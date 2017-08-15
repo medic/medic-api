@@ -1,7 +1,12 @@
 const PouchDB = require('pouchdb-core');
 PouchDB.plugin(require('pouchdb-adapter-http'));
 
-const buildDbUrl = 'https://staging.dev.medicmobile.org/_couch/builds';
+// const buildDbUrl = 'https://staging.dev.medicmobile.org/_couch/builds';
+
+//////////////////////////////// HACK
+const buildDbUrl = 'https://admin:pass@localhost:5984/builds';
+//////////////////////////////// HACK
+
 const buildDb = new PouchDB(buildDbUrl);
 const targetDbUrl = process.env.COUCH_URL;
 const targetDb = new PouchDB(targetDbUrl);
@@ -14,13 +19,27 @@ const ddocName = buildInfo =>
  `${buildInfo.namespace}:${buildInfo.application}:${buildInfo.version}`;
 
 module.exports = (buildInfo, username) => {
+  if (!buildInfo) {
+    throw new Error('Bad request');
+  }
+
   // While we've set the api to in theory be more generic, this is for if we
   // split this code out (and say, put it with horticulturalist). For now we
   // just support medic deploying medic :-)
   if (buildInfo.namespace !== 'medic' ||
       buildInfo.application !== 'medic') {
-    throw new Error(
-      `We only support medic-webapp right now, not this: ${buildInfo}'`);
+    return Promise.reject({
+      expected: true,
+      status: 400,
+      message: 'We only support medic as the application and namespace'
+    });
+  }
+
+  if (true) {
+    console.log('YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY');
+    console.log(buildInfo, username);
+    console.log('YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY');
+    return Promise.resolve();
   }
 
   console.log('upgrade()', `Upgrading to ${JSON.stringify(buildInfo)}…`);
@@ -28,6 +47,13 @@ module.exports = (buildInfo, username) => {
   console.log('upgrade()', 'Fetching newDdoc…');
   return buildDb
     .get(ddocName(buildInfo), { attachments:true })
+    .catch(err => {
+      if (err.status === 404) {
+        err = new Error(`Version not found: ${buildInfo.version}`);
+        err.expected = true;
+      }
+      throw err;
+    })
     .then(newDdoc => {
       console.log('upgrade()', 'Fetched newDdoc.');
 
@@ -49,12 +75,5 @@ module.exports = (buildInfo, username) => {
           return targetDb.put(newDdoc);
         })
         .then(() => console.log('upgrade()', 'newDdoc uploaded, awaiting Horticulturalist'));
-      })
-      .catch(err => {
-        if (err.status === 404) {
-          err = new Error(`Version not found: ${buildInfo.version}`);
-          err.expected = true;
-        }
-        throw err;
       });
 };

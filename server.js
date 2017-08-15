@@ -174,11 +174,21 @@ app.get('/api/auth/:path', function(req, res) {
   });
 });
 
-app.post('/v1/api/upgrade', jsonParser, (req, res) => {
-  auth.isDbAdmin((err, userCtx) => {
+app.post('/api/v1/upgrade', jsonParser, (req, res) => {
+  auth.isDbAdmin(req, (err, userCtx) => {
     if (err) {
       return serverUtils.error(err, req, res);
     }
+
+    var buildInfo = req.body.build;
+    if (!buildInfo) {
+      return serverUtils.error({
+        message: "You must provide a build info body",
+        expected: true,
+        status: 400
+      }, req, res);
+    }
+
     upgrade(req.body.build, userCtx.user)
       .then(() => res.json({ ok: true }))
       .catch(err => serverUtils.error(err, req, res));
