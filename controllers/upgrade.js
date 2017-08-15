@@ -6,40 +6,55 @@ const buildDb = new PouchDB(buildDbUrl);
 const targetDbUrl = process.env.COUCH_URL;
 const targetDb = new PouchDB(targetDbUrl);
 
-module.exports = (version, username) => {
-  console.log('upgrade()', `Upgrading to ${version}…`);
+// TODO: formalise this (TODO add ticket)
+const stagedDdocName = name => name + ':staged';
+
+// TODO: formalise all of this data munging (TODO add ticket)
+const ddocName = buildInfo =>
+ `${buildInfo.namespace}:${buildInfo.application}:${buildInfo.version}`;
+
+module.exports = (buildInfo, username) => {
+  // While we've set the api to in theory be more generic, this is for if we
+  // split this code out (and say, put it with horticulturalist). For now we
+  // just support medic deploying medic :-)
+  if (buildInfo.namespace !== 'medic' ||
+      buildInfo.application !== 'medic') {
+    throw new Error(
+      `We only support medic-webapp right now, not this: ${buildInfo}'`);
+  }
+
+  console.log('upgrade()', `Upgrading to ${JSON.stringify(buildInfo)}…`);
 
   console.log('upgrade()', 'Fetching newDdoc…');
   return buildDb
-    .get(version, { attachments:true })
-    .then(newDdoc => console.log('upgrade()', 'Fetched newDdoc.') || newDdoc)
+    .get(ddocName(buildInfo), { attachments:true })
+    .then(newDdoc => {
+      console.log('upgrade()', 'Fetched newDdoc.');
 
-    .then(newDdoc => console.log('upgrade()', 'Fetching oldDdoc…') || newDdoc)
-    .then(newDdoc =>
-      targetDb.get('_design/medic')
-        .then(oldDdoc => console.log('upgrade()', 'Fetched oldDdoc.') || oldDdoc)
-
+      console.log('upgrade()', 'Fetching oldDdoc…');
+      return targetDb.get('_design/medic')
         .then(oldDdoc => {
-          newDdoc.app_settings = oldDdoc.app_settings;
-          newDdoc._id = oldDdoc._id;
+          console.log('upgrade()', 'Fetched oldDdoc.');
+
+          newDdoc._id = stagedDdocName(oldDdoc._id);
           newDdoc._rev = oldDdoc._rev;
 
           newDdoc.deploy_info = {
             timestamp: new Date().toString(),
             user: username,
-            version: version,
+            version: buildInfo.version,
           };
 
-          console.log('upgrade()', 'Uploading new ddoc…');
-          return targetDb.put(newDdoc)
-            .then(ret => console.log('upgrade()', 'newDdoc uploaded.') || ret);
-
-        }))
-    .catch(err => {
-      if (err.status === 404) {
-        err = new Error(`Version not found: ${version}`);
-        err.expected = true;
-      }
-      throw err;
-    });
+          console.log('upgrade()', 'Uploading new ddoc into staging position');
+          return targetDb.put(newDdoc);
+        })
+        .then(() => console.log('upgrade()', 'newDdoc uploaded, awaiting Horticulturalist'));
+      })
+      .catch(err => {
+        if (err.status === 404) {
+          err = new Error(`Version not found: ${buildInfo.version}`);
+          err.expected = true;
+        }
+        throw err;
+      });
 };

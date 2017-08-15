@@ -179,7 +179,7 @@ app.post('/api/upgrade', jsonParser, (req, res) => {
     if (err) {
       return serverUtils.error(err, req, res);
     }
-    upgrade(req.body.version, userCtx.user)
+    upgrade(req.body.build, userCtx.user)
       .then(() => res.json({ ok: true }))
       .catch(err => serverUtils.error(err, req, res));
   });
