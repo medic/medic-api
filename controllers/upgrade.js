@@ -4,7 +4,7 @@ PouchDB.plugin(require('pouchdb-adapter-http'));
 // const buildDbUrl = 'https://staging.dev.medicmobile.org/_couch/builds';
 
 //////////////////////////////// HACK
-const buildDbUrl = 'https://admin:pass@localhost:5984/builds';
+const buildDbUrl = 'http://admin:pass@localhost:5984/builds';
 //////////////////////////////// HACK
 
 const buildDb = new PouchDB(buildDbUrl);
@@ -41,10 +41,15 @@ module.exports = (buildInfo, username) => {
   return buildDb
     .get(ddocName(buildInfo), { attachments:true })
     .catch(err => {
+      console.log('GOT ERROR', err);
       if (err.status === 404) {
         err = new Error(`Version not found: ${buildInfo.version}`);
         err.expected = true;
       }
+      // FIXME: stop this from causing an unhandled promise rejection
+      //        It shouldn't do this because we catch again in server.js:194
+      //        Exceptions thrown in other parts (such as targetDb.put(newDDoc))
+      //        correctly flow to the second catch, but this one doesn't?
       throw err;
     })
     .then(newDdoc => {
@@ -56,7 +61,7 @@ module.exports = (buildInfo, username) => {
           console.log('upgrade()', 'Fetched oldDdoc.');
 
           newDdoc._id = stagedDdocName(oldDdoc._id);
-          newDdoc._rev = oldDdoc._rev;
+          delete newDdoc._rev;
 
           newDdoc.deploy_info = {
             timestamp: new Date().toString(),
@@ -64,7 +69,7 @@ module.exports = (buildInfo, username) => {
             version: buildInfo.version,
           };
 
-          console.log('upgrade()', 'Uploading new ddoc into staging position');
+          console.log('upgrade()', `Staging new ddoc as ${newDdoc._id}`);
           return targetDb.put(newDdoc);
         })
         .then(() => console.log('upgrade()', 'newDdoc uploaded, awaiting Horticulturalist'));
