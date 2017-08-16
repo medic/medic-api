@@ -35,13 +35,6 @@ module.exports = (buildInfo, username) => {
     });
   }
 
-  if (true) {
-    console.log('YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY');
-    console.log(buildInfo, username);
-    console.log('YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY');
-    return Promise.resolve();
-  }
-
   console.log('upgrade()', `Upgrading to ${JSON.stringify(buildInfo)}…`);
 
   console.log('upgrade()', 'Fetching newDdoc…');
