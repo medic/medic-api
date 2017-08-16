@@ -70,6 +70,11 @@ module.exports = (buildInfo, username) => {
           };
 
           console.log('upgrade()', `Staging new ddoc as ${newDdoc._id}`);
+          // TODO: if we have already pushed a staged ddoc this can cause a 409
+          //       Do we want to deal with this? Do we want to delete the existing
+          //       ddoc first? What if horti is in the middle of dealing with it?
+          //       Horti deletes this document once it's copied it into the right
+          //       place, so maybe leave this / make the error messag clearer
           return targetDb.put(newDdoc);
         })
         .then(() => console.log('upgrade()', 'newDdoc uploaded, awaiting Horticulturalist'));
