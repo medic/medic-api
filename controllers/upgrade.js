@@ -1,20 +1,14 @@
 const PouchDB = require('pouchdb-core');
 PouchDB.plugin(require('pouchdb-adapter-http'));
 
-// const buildDbUrl = 'https://staging.dev.medicmobile.org/_couch/builds';
-
-//////////////////////////////// HACK
-const buildDbUrl = 'http://admin:pass@localhost:5984/builds';
-//////////////////////////////// HACK
+const buildDbUrl = 'https://staging.dev.medicmobile.org/_couch/builds';
 
 const buildDb = new PouchDB(buildDbUrl);
 const targetDbUrl = process.env.COUCH_URL;
 const targetDb = new PouchDB(targetDbUrl);
 
-// TODO: formalise this (TODO add ticket)
 const stagedDdocName = name => name + ':staged';
 
-// TODO: formalise all of this data munging (TODO add ticket)
 const ddocName = buildInfo =>
  `${buildInfo.namespace}:${buildInfo.application}:${buildInfo.version}`;
 
@@ -46,7 +40,7 @@ module.exports = (buildInfo, username) => {
         err = new Error(`Version not found: ${buildInfo.version}`);
         err.expected = true;
       }
-      // FIXME: stop this from causing an unhandled promise rejection
+      // FIXME: why does this from causing an unhandled promise rejection?
       //        It shouldn't do this because we catch again in server.js:194
       //        Exceptions thrown in other parts (such as targetDb.put(newDDoc))
       //        correctly flow to the second catch, but this one doesn't?
