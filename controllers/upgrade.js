@@ -34,14 +34,10 @@ module.exports = (buildInfo, username) => {
   return buildDb
     .get(ddocName(buildInfo), { attachments:true })
     .catch(err => {
-      console.log('GOT ERROR', err);
       if (err.status === 404) {
         err = new Error(`Version not found: ${buildInfo.version}`);
       }
-      // FIXME: why does this from causing an unhandled promise rejection?
-      //        It shouldn't do this because we catch again in server.js:194
-      //        Exceptions thrown in other parts (such as targetDb.put(newDDoc))
-      //        correctly flow to the second catch, but this one doesn't?
+
       throw err;
     })
     .then(newDdoc => {
@@ -62,11 +58,9 @@ module.exports = (buildInfo, username) => {
           };
 
           console.log('upgrade()', `Staging new ddoc as ${newDdoc._id}`);
-          // TODO: if we have already pushed a staged ddoc this can cause a 409
-          //       Do we want to deal with this? Do we want to delete the existing
-          //       ddoc first? What if horti is in the middle of dealing with it?
-          //       Horti deletes this document once it's copied it into the right
-          //       place, so maybe leave this / make the error messag clearer
+          // FIXME: this can 409. If this happens blow away the existing staged
+          //        doc and put this new one.
+          //        https://github.com/medic/medic-webapp/issues/3806
           return targetDb.put(newDdoc);
         })
         .then(() => console.log('upgrade()', 'newDdoc uploaded, awaiting Horticulturalist'));
