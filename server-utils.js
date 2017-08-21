@@ -86,13 +86,11 @@ module.exports = {
     }
   },
 
+  /**
+   * Only to be used when handling unexpected errors.
+   */
   serverError: function(err, req, res) {
     console.error('Server error:\n', err);
-    if (err.expected) {
-      const status = err.status || 500;
-      respond(req, res, status, err.message);
-    } else {
-      respond(req, res, 500, 'Server error');
-    }
+    respond(req, res, 500, 'Server error');
   }
 };

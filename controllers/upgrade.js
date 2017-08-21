@@ -23,7 +23,6 @@ module.exports = (buildInfo, username) => {
   if (buildInfo.namespace !== 'medic' ||
       buildInfo.application !== 'medic') {
     return Promise.reject({
-      expected: true,
       status: 400,
       message: 'We only support medic as the application and namespace'
     });
@@ -38,7 +37,6 @@ module.exports = (buildInfo, username) => {
       console.log('GOT ERROR', err);
       if (err.status === 404) {
         err = new Error(`Version not found: ${buildInfo.version}`);
-        err.expected = true;
       }
       // FIXME: why does this from causing an unhandled promise rejection?
       //        It shouldn't do this because we catch again in server.js:194

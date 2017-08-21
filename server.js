@@ -184,7 +184,6 @@ app.post('/api/v1/upgrade', jsonParser, (req, res) => {
     if (!buildInfo) {
       return serverUtils.error({
         message: 'You must provide a build info body',
-        expected: true,
         status: 400
       }, req, res);
     }
