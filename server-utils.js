@@ -91,6 +91,9 @@ module.exports = {
    */
   serverError: function(err, req, res) {
     console.error('Server error:\n', err);
-    respond(req, res, 500, 'Server error');
+    const message = typeof err === 'string' ? err :
+        err instanceof Error ? err.message :
+        err;
+    respond(req, res, 500, 'Server error: ' + message);
   }
 };

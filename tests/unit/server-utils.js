@@ -85,7 +85,7 @@ exports['error handles unknown errors'] = test => {
   test.equals(writeHead.args[0][0], 500);
   test.equals(writeHead.args[0][1]['Content-Type'], 'text/plain');
   test.equals(end.callCount, 1);
-  test.equals(end.args[0][0], 'Server error');
+  test.equals(end.args[0][0], 'Server error: [object Object]');
   test.done();
 };
 
@@ -152,7 +152,7 @@ exports['serverError does not leak errors information to the client'] = test => 
   test.equals(writeHead.args[0][0], 500);
   test.equals(writeHead.args[0][1]['Content-Type'], 'text/plain');
   test.equals(end.callCount, 1);
-  test.equals(end.args[0][0], 'Server error');
+  test.equals(end.args[0][0], 'Server error: boom');
   test.done();
 };
 
@@ -169,6 +169,6 @@ exports['serverError responds with JSON'] = test => {
   test.equals(status.args[0][0], 500);
   test.equals(json.callCount, 1);
   test.equals(json.args[0][0].code, 500);
-  test.equals(json.args[0][0].error, 'Server error');
+  test.equals(json.args[0][0].error, 'Server error: [object Object]');
   test.done();
 };
