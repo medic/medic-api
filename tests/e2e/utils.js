@@ -69,7 +69,7 @@ module.exports = {
         method: 'POST',
         uri: apiUrl(path),
         json: true,
-        body: JSON.stringify(jsonData),
+        body: jsonData,
       }),
 
   cleanDb: function() {
