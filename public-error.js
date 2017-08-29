@@ -3,6 +3,6 @@ class PublicError extends Error {
     super(publicMessage, ...args);
     this.publicMessage = publicMessage;
   }
-};
+}
 
 module.exports = PublicError;
