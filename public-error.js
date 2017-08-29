@@ -1,5 +1,8 @@
-module.exports = message => {
-  const err = new Error(message);
-  err.publicMessage = message;
-  return err;
+class PublicError extends Error {
+  constructor(publicMessage, ...args) {
+    super(publicMessage, ...args);
+    this.publicMessage = publicMessage;
+  }
 };
+
+module.exports = PublicError;
