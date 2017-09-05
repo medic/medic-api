@@ -22,6 +22,8 @@ module.exports = {
 
           db.medic.destroy(_id, _rev, callback);
         });
+      } else {
+        callback();
       }
     });
   }
