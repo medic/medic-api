@@ -13,15 +13,17 @@ module.exports = {
   name: 'add-contact-icons-to-resources-doc',
   created: new Date(2017, 10, 5, 15, 0, 0, 0),
   run: callback => {
-    console.log('GETTING');
     db.medic.get('resources', (err, doc) => {
       if (err) {
         return callback(err);
       }
-      console.log('GOT', JSON.stringify(doc, null, 2));
       asyncEach(
         resources,
         (resource, callback) => {
+          if (doc.resources[resource.name]) {
+            // don't overwrite the existing attachment
+            return callback();
+          }
           fs.readFile('resources/' + resource.file, (err, data) => {
             if (err) {
               return callback(err);
