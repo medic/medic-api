@@ -47,6 +47,9 @@ var submit = function(e) {
     user: document.getElementById('user').value.toLowerCase().trim(),
     password: document.getElementById('password').value
   });
+
+  document.cookie = '';
+
   post(url, payload, handleResponse);
 };
 
@@ -72,4 +75,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('password')
       .addEventListener('keydown', focusOnSubmit, false);
+
+  if(window.medicmobile_android && medicmobile_android.getAuthedAccounts) {
+    // initialise account switcher
+    var $existingList = document.getElementById('existing-list');
+    var authedAccounts = JSON.parse(medicmobile_android.getAuthedAccounts());
+    var i, acc;
+
+    if(!authedAccounts.length) {
+      removeEl($existingList);
+      removeEl(document.getElementById('existing-title'));
+    }
+
+    for(i=0; i<authedAccounts.length; ++i) {
+      acc = authedAccounts[i];
+      console.log(acc);
+
+      (function(acc) {
+        var a = document.createElement('a');
+        a.innerHTML = acc;
+        a.addEventListener('click', function() {
+          medicmobile_android.switchToAuthedAccount(acc);
+        });
+
+        var li = document.createElement('li');
+        li.appendChild(a);
+        $existingList.appendChild(li);
+      }(acc));
+    }
+  }
+
+  function removeEl(e) {
+    e.parentNode.removeChild(e);
+  }
 });
