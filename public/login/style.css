@@ -105,3 +105,25 @@ form {
     transform: rotate(360deg);
   }
 }
+#existing-accounts {
+  list-style: none outside none;
+  padding: 0;
+  margin: 0;
+}
+#existing-accounts li {
+  text-indent: 0;
+  list-style: none;
+  padding:5px;
+  border-top: 1px solid white;
+}
+#existing-accounts li:nth-child(1) {
+  border: none;
+}
+#existing-accounts a {
+  display: block;
+  padding: 5px;
+  margin: 0;
+}
+#existing-accounts a:active {
+  background-color: #ccc;
+}

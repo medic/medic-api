@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if(window.medicmobile_android && medicmobile_android.getAuthedAccounts) {
     // initialise account switcher
-    var $existingList = document.getElementById('existing-list');
+    var $existingList = document.getElementById('existing-accounts');
     var authedAccounts = JSON.parse(medicmobile_android.getAuthedAccounts());
     var i, acc;
 
