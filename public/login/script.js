@@ -89,8 +89,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     for(i=0; i<authedAccounts.length; ++i) {
       acc = authedAccounts[i];
-      console.log(acc);
-
       (function(acc) {
         var a = document.createElement('a');
         a.innerHTML = acc;
