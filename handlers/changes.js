@@ -170,7 +170,7 @@ var getChanges = function(feed) {
     cleanUp(feed);
     if (err) {
       feed.res.write(error(503, 'Error processing your changes'));
-    } else if (!changes && !changes.results) {
+    } else if (!changes || !changes.results) {
       feed.res.write(error(503, 'No _changes error, but malformed response.'));
     } else {
       prepareResponse(feed, changes);
