@@ -79,13 +79,18 @@ document.addEventListener('DOMContentLoaded', function() {
   if(window.medicmobile_android && medicmobile_android.getAuthedAccounts) {
     // initialise account switcher
     var $existingList = document.getElementById('existing-accounts');
+    var $existingTitle = document.getElementById('existing-title');
     var authedAccounts = JSON.parse(medicmobile_android.getAuthedAccounts());
     var i, acc;
 
     if(!authedAccounts.length) {
       removeEl($existingList);
-      removeEl(document.getElementById('existing-title'));
+      removeEl($existingTitle);
+      return;
     }
+
+    $existingTitle.removeAttribute('style');
+    document.getElementById('new-login-title').removeAttribute('style');
 
     for(i=0; i<authedAccounts.length; ++i) {
       acc = authedAccounts[i];
