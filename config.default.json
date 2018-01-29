@@ -121,8 +121,7 @@
     {
       "name": "can_view_users",
       "roles": [
-        "national_admin",
-        "district_admin"
+        "national_admin"
       ]
     },
     {
@@ -144,8 +143,7 @@
     {
       "name": "can_update_users",
       "roles": [
-        "national_admin",
-        "district_admin"
+        "national_admin"
       ]
     },
     {
@@ -174,8 +172,7 @@
     {
       "name": "can_create_users",
       "roles": [
-        "national_admin",
-        "district_admin"
+        "national_admin"
       ]
     },
     {
@@ -295,8 +292,7 @@
     {
       "name": "can_delete_users",
       "roles": [
-        "national_admin",
-        "district_admin"
+        "national_admin"
       ]
     },
     {
