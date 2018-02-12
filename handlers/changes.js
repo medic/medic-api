@@ -178,6 +178,10 @@ var cleanUp = function(feed) {
   abortAllChangesRequests(feed);
 };
 
+// returns true if superset contains all elements in subset
+const containsAll = (superset, subset) =>
+  subset.every(element => superset.indexOf(element) !== -1);
+
 var getChanges = function(feed) {
   var startTime = startTimer();
 
@@ -208,25 +212,43 @@ var getChanges = function(feed) {
     },
     (err, responses) => {
       endTimer(`getChanges().requests:${chunks.length}`, startTime);
-
       if (feed.res.finished) {
         // Don't write to the response if it has already ended. The change
         // will be picked up in the subsequent changes request.
         return;
       }
-      cleanUp(feed);
       if (err) {
         feed.res.write(error(503, 'Error processing your changes'));
-      } else {
-        const changes = mergeChangesResponses(responses);
-        if (changes) {
-          prepareResponse(feed, changes);
-        } else {
-          feed.res.write(error(503, 'No _changes error, but malformed response.'));
-        }
+        feed.res.end();
+        return;
       }
-      feed.res.end();
-      endTimer('getChanges().end', startTime);
+      // if relevant ids have changed, update validated ids, getChanges again
+      const originalValidatedIds = feed.validatedIds;
+      bindServerIds(feed, err => {
+        if (!containsAll(originalValidatedIds, feed.validatedIds)) {
+          // getChanges again with the updated ids
+          abortAllChangesRequests(feed);
+          // setTimeout to stop recursive stack overflow
+          setTimeout(() => {
+            getChanges(feed);
+          });
+          return;
+        }
+
+        cleanUp(feed);
+        if (err) {
+          feed.res.write(error(503, 'Error processing your changes'));
+        } else {
+          const changes = mergeChangesResponses(responses);
+          if (changes) {
+            prepareResponse(feed, changes);
+          } else {
+            feed.res.write(error(503, 'No _changes error, but malformed response.'));
+          }
+        }
+        feed.res.end();
+        endTimer('getChanges().end', startTime);
+      });
     }
   );
 };
