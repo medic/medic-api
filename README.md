@@ -1,10 +1,16 @@
-medic-api
+LEGACY medic-api
 =========
 
 Node server to support medic-webapp.
 
 Currently supports auditing by proxying requests to CouchDB and updating the
 audit history where required.
+
+# Legacy Note
+
+For 2.15 and greater versions of [medic-webapp](https://github.com/medic/medic-webapp) we have merged medic-api and medic-sentinel repositories directly into the main repo.
+
+This repo exists only to service 2.14.x builds and below, and will eventually be archived.
 
 
 # Table of contents
