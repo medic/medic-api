@@ -9,6 +9,7 @@ var _ = require('underscore'),
     CONTACT_TYPES = ['person', 'clinic', 'health_center', 'district_hospital'],
     inited = false,
     continuousFeeds = [];
+const uuid = require('uuid/v4');
 
 /**
  * As per https://issues.apache.org/jira/browse/COUCHDB-1288, there is a 100 doc
@@ -161,11 +162,19 @@ var prepareResponse = function(feed, changes) {
   feed.res.write(JSON.stringify(changes));
 };
 
-var abortAllChangesRequests = feed => {
-  if (feed.changesReqs) {
-    feed.changesReqs.forEach(req => req && req.abort());
-  }
-};
+function abortUpstreamBatches(feed, reason, logMessage) {
+  const uBatchCount = Object.keys(feed.upstreamBatches).length;
+  feed.log(`[abortUpstreamBatches():${reason}]`, `Cancelling ${uBatchCount} batches...`);
+
+  Object.keys(feed.upstreamBatches).forEach(id => {
+    feed.log(`[abortUpstreamBatches():${reason}]`, logMessage, id);
+
+    const upstreamBatch = feed.upstreamBatches[id];
+    upstreamBatch.requests.forEach(r => r.abort());
+    upstreamBatch.aborted = reason;
+    delete feed.upstreamBatches[id];
+  });
+}
 
 var cleanUp = function(feed) {
   if (feed.heartbeat) {
@@ -175,7 +184,6 @@ var cleanUp = function(feed) {
   if (index !== -1) {
     continuousFeeds.splice(index, 1);
   }
-  abortAllChangesRequests(feed);
 };
 
 // returns true if superset contains all elements in subset
@@ -184,6 +192,11 @@ const containsAll = (superset, subset) =>
 
 var getChanges = function(feed) {
   var startTime = startTimer();
+  const upstreamBatchId = uuid();
+  const logPrefix = `INFO [getChanges():${upstreamBatchId}]`;
+  const log = (...message) => feed.log(logPrefix, `[res.finished=${feed.res.finished}]`, ...message);
+
+  log('starting…');
 
   const allIds = _.union(feed.requestedIds, feed.validatedIds);
   const chunks = [];
@@ -196,13 +209,15 @@ var getChanges = function(feed) {
     }
   }
 
-  feed.changesReqs = [];
+  const upstreamBatch = { id:upstreamBatchId, requests:[] };
+  feed.upstreamBatches[upstreamBatchId] = upstreamBatch;
+
   // we cannot call 'changes' in nano because it only uses GET requests and
   // our query string might be too long for GET
   async.map(
     chunks,
     (docIds, callback) => {
-      feed.changesReqs.push(db.request({
+      upstreamBatch.requests.push(db.request({
         db: db.settings.db,
         path: '_changes',
         qs:  _.pick(feed.req.query, 'timeout', 'style', 'heartbeat', 'since', 'feed', 'limit', 'filter'),
@@ -211,43 +226,62 @@ var getChanges = function(feed) {
       }, callback));
     },
     (err, responses) => {
-      endTimer(`getChanges().requests:${chunks.length}`, startTime);
-      if (feed.res.finished) {
-        // Don't write to the response if it has already ended. The change
-        // will be picked up in the subsequent changes request.
+      endTimer(`getChanges():${upstreamBatchId}.requests:${chunks.length}`, startTime);
+      if (upstreamBatch.aborted) {
+        if (err) {
+          log(`Error caught in upstream request for aborted upstream batch.  This probably isn't a problem, but might be interesting.`, err);
+        }
+        log(`Not processing upstream change responses because the batch was aborted (${upstreamBatch.aborted}).`);
+        delete feed.upstreamBatches[upstreamBatch.id];
         return;
       }
       if (err) {
+        log('Error processing upstream changes request(s).  Response will be ended.', err);
         feed.res.write(error(503, 'Error processing your changes'));
         feed.res.end();
+        delete feed.upstreamBatches[upstreamBatch.id];
         return;
       }
       // if relevant ids have changed, update validated ids, getChanges again
       const originalValidatedIds = feed.validatedIds;
       bindServerIds(feed, err => {
+        if (upstreamBatch.aborted) {
+          if (err) {
+            log(`Error caught in bindServerIds() for aborted upstream batch.  This probably isn't a problem, but might be interesting.`, err);
+          }
+          log(`Not processing bindServerIds() result because the batch was aborted (${upstreamBatch.aborted}).`);
+          delete feed.upstreamBatches[upstreamBatch.id];
+          return;
+        }
         if (!containsAll(originalValidatedIds, feed.validatedIds)) {
           // getChanges again with the updated ids
-          abortAllChangesRequests(feed);
           // setTimeout to stop recursive stack overflow
           setTimeout(() => {
-            getChanges(feed);
+            log(`setTimeout() fired (aborted=${upstreamBatch.aborted}`);
+            if (!upstreamBatch.aborted) {
+              getChanges(feed);
+            }
+            delete feed.upstreamBatches[upstreamBatch.id];
           });
           return;
         }
 
         cleanUp(feed);
         if (err) {
+          log('Error returned by bindServerIds(); response will be ended.', err);
           feed.res.write(error(503, 'Error processing your changes'));
         } else {
           const changes = mergeChangesResponses(responses);
           if (changes) {
+            log('changes merged successfully.  Response will be ended after prepareResponse() returns.');
             prepareResponse(feed, changes);
           } else {
+            log('Malformed response received from upstream changes request.  Response will be ended.');
             feed.res.write(error(503, 'No _changes error, but malformed response.'));
           }
         }
         feed.res.end();
-        endTimer('getChanges().end', startTime);
+        endTimer(`getChanges():${upstreamBatchId}.end`, startTime);
       });
     }
   );
@@ -428,11 +462,14 @@ var updateFeeds = function(changes) {
   continuousFeeds.forEach(function(feed) {
     // check if new and relevant
     if (hasNewApplicableDoc(feed, modifiedChanges)) {
-      abortAllChangesRequests(feed);
+      abortUpstreamBatches(feed, 'newer-change-received', 'INFO [onRelevantChange] cancelling upstream batch (before bindServerIds()):');
+
       bindServerIds(feed, function(err) {
+        abortUpstreamBatches(feed, 'newer-change-received', 'INFO [onRelevantChange] cancelling upstream batch (after bindServerIds()):');
         if (err) {
           return serverUtils.error(err, feed.req, feed.res);
         }
+        feed.log('updateFeeds()', 'Calling getChanges()…');
         getChanges(feed);
       });
     }
@@ -478,12 +515,20 @@ module.exports = {
       if (auth.hasAllPermissions(userCtx, 'can_access_directly')) {
         proxy.web(req, res);
       } else {
-        var feed = {
+        const feed = {
+          id: uuid(),
           req: req,
           res: res,
-          userCtx: userCtx
+          userCtx: userCtx,
+          upstreamBatches: {},
         };
+        const logPrefix = `[feed:${feed.id}]`;
+        feed.log = (...message) => console.log(logPrefix, ...message);
+
         req.on('close', function() {
+          const uBatchCount = Object.keys(feed.upstreamBatches).length;
+          feed.log(`[event:close] outstanding ${uBatchCount} upstream batch(es) will be cancelled, and feed will be cleaned up.`);
+          abortUpstreamBatches(feed, 'response-closed', 'WARN unresolved upstream batch(es) after response was closed:');
           cleanUp(feed);
         });
         initFeed(feed, function(err) {
@@ -496,6 +541,7 @@ module.exports = {
           }
           res.type('json');
           defibrillator(feed);
+          feed.log('initFeed().callback', 'calling getChanges()…');
           getChanges(feed);
         });
       }
