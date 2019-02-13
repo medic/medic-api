@@ -429,15 +429,15 @@ var gated = function(who) {
   } else {
     return false;
   }
-}
+};
 var upGate = function(who) {
   console.log('GATE ' + performanceGate + ' => ' + performanceGate + 1 + who ? ' for ' + who : '');
   performanceGate++;
-}
+};
 var downGate = function(who) {
   console.log('GATE ' + performanceGate + ' => ' + performanceGate - 1 + who ? ' for ' + who : '');
   performanceGate--;
-}
+};
 
 module.exports = {
   request: function(proxy, req, res) {
