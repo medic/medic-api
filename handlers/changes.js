@@ -168,6 +168,7 @@ var abortAllChangesRequests = feed => {
 };
 
 var cleanUp = function(feed) {
+  performanceGate--;
   if (feed.heartbeat) {
     clearInterval(feed.heartbeat);
   }
@@ -390,6 +391,7 @@ var updateFeeds = function(changes) {
       abortAllChangesRequests(feed);
       bindServerIds(feed, function(err) {
         if (err) {
+          performanceGate--;
           return serverUtils.error(err, feed.req, feed.res);
         }
         getChanges(feed);
@@ -421,19 +423,12 @@ var performanceGate = 0;
 
 module.exports = {
   request: function(proxy, req, res) {
-    if (performanceGate >= 100) {
-      return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
-    }
-
-    performanceGate++;
-
     if (!inited) {
       init();
     }
 
     auth.getUserCtx(req, function(err, userCtx) {
       if (err) {
-        performanceGate--;
         return serverUtils.error(err, req, res);
       }
 
@@ -445,20 +440,24 @@ module.exports = {
       }
 
       if (auth.hasAllPermissions(userCtx, 'can_access_directly')) {
-        performanceGate--;
         proxy.web(req, res);
       } else {
+
+        if (performanceGate >= 100) {
+          return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
+        }
+        performanceGate++;
         var feed = {
           req: req,
           res: res,
           userCtx: userCtx
         };
         req.on('close', function() {
-          performanceGate--;
           cleanUp(feed);
         });
         initFeed(feed, function(err) {
           if (err) {
+            performanceGate--;
             return serverUtils.error(err, req, res);
           }
           if (req.query.feed === 'longpoll') {
