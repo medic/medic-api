@@ -168,7 +168,7 @@ var abortAllChangesRequests = feed => {
 };
 
 var cleanUp = function(feed) {
-  downGate(/*username?*/);
+  downGate(feed.userCtx && feed.userCtx.name);
   if (feed.heartbeat) {
     clearInterval(feed.heartbeat);
   }
@@ -391,7 +391,7 @@ var updateFeeds = function(changes) {
       abortAllChangesRequests(feed);
       bindServerIds(feed, function(err) {
         if (err) {
-          downGate(/*username?*/);
+          downGate(feed.userCtx && feed.userCtx.name);
           return serverUtils.error(err, feed.req, feed.res);
         }
         getChanges(feed);
