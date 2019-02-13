@@ -514,7 +514,7 @@ function endTimer(name, start) {
     slowNote = 'VERY SLOW' + Array(howSlow + 1).join('!') + ' ';
   }
 
-  console.log(`${slowNote}TIMED SECTION COMPLETE`, name, diff, 'ms');
+  console.log(`${slowNote ? slowNote : ''}TIMED SECTION COMPLETE`, name, diff, 'ms');
 }
 
 // used for testing
