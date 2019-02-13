@@ -419,6 +419,7 @@ var init = function(since) {
   });
 };
 
+var PERFORMANCE_GATE_MAXIMUM = 250;
 var performanceGate = 0;
 var upGate = function(who) {
   console.log('GATE ' + performanceGate + ' => ' + performanceGate + 1 + who ? ' for ' + who : '');
@@ -451,7 +452,7 @@ module.exports = {
         proxy.web(req, res);
       } else {
 
-        if (performanceGate >= 100) {
+        if (performanceGate >= PERFORMANCE_GATE_MAXIMUM) {
           return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
         }
         upGate(userCtx.name);
