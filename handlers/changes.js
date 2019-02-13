@@ -431,6 +431,7 @@ module.exports = {
     }
     auth.getUserCtx(req, function(err, userCtx) {
       if (err) {
+        performanceGate--;
         return serverUtils.error(err, req, res);
       }
 
@@ -442,6 +443,7 @@ module.exports = {
       }
 
       if (auth.hasAllPermissions(userCtx, 'can_access_directly')) {
+        performanceGate--;
         proxy.web(req, res);
       } else {
         var feed = {
@@ -454,13 +456,17 @@ module.exports = {
           cleanUp(feed);
         });
         initFeed(feed, function(err) {
+
           if (err) {
+            performanceGate--;
             return serverUtils.error(err, req, res);
           }
+
           if (req.query.feed === 'longpoll') {
             // watch for newly added docs
             continuousFeeds.push(feed);
           }
+
           res.type('json');
           defibrillator(feed);
           getChanges(feed);
