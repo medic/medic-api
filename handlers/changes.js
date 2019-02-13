@@ -424,19 +424,19 @@ var init = function(since) {
 var performanceGate = 0;
 var gated = function(who) {
   if (performanceGate >= PERFORMANCE_GATE_MAXIMUM) {
-    console.log(who + ' is gated at ' + performanceGate);
+    console.log('GATE BLOCKED ' + who + ' at ' + performanceGate);
     return true;
   } else {
     return false;
   }
 };
 var upGate = function(who) {
-  console.log('GATE ' + performanceGate + ' => ' + performanceGate + 1 + who ? ' for ' + who : '');
   performanceGate++;
+  console.log('GATE++ =>' + performanceGate + (who ? ' :: for ' + who : ''));
 };
 var downGate = function(who) {
-  console.log('GATE ' + performanceGate + ' => ' + performanceGate - 1 + who ? ' for ' + who : '');
   performanceGate--;
+  console.log('GATE-- =>' + performanceGate + (who ? ' :: for ' + who : ''));
 };
 
 module.exports = {
