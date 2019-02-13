@@ -503,10 +503,10 @@ function startTimer() {
 var SLOW_MS = 1500;
 function endTimer(name, start) {
   var diff = Date.now() - start;
-  // 0-4000:
-  // 4-8000:   VERY SLOW!
-  // 8-12000:  VERY SLOW!!
-  // 12-16000: VERY SLOW!!!
+  // 0-1500:
+  // .-3000: VERY SLOW!
+  // .-4500: VERY SLOW!!
+  // .-6000: VERY SLOW!!!
   // etc
   var howSlow = Math.ceil((diff - SLOW_MS) / SLOW_MS);
   var slowNote;
