@@ -89,7 +89,7 @@ var bindSubjectIds = function(feed, callback) {
           subjectIds.push(UNASSIGNED_KEY);
         }
         feed.subjectIds = subjectIds;
-        endTimer('bindSubjectIds().before-callback', startTime);
+        endTimer(`bindSubjectIds().before-callback [${feed.userCtx.name} => ${subjectIds.length}]`, startTime);
         callback();
       });
     });
@@ -115,7 +115,7 @@ var isSensitive = function(feed, subject, submitter) {
 var bindValidatedDocIds = function(feed, callback) {
   var startTime = startTimer();
   db.medic.view('medic', 'docs_by_replication_key', { keys: feed.subjectIds }, function(err, viewResult) {
-    endTimer('bindValidatedDocIds().docs_by_replication_key', startTime);
+    endTimer(`bindValidatedDocIds().docs_by_replication_key [${feed.userCtx.name} => ${viewResult.rows.length}]`, startTime);
     if (err) {
       return callback(err);
     }
@@ -125,7 +125,7 @@ var bindValidatedDocIds = function(feed, callback) {
       }
       return ids;
     }, [ '_design/medic-client', 'org.couchdb.user:' + feed.userCtx.name ]);
-    endTimer('bindValidatedDocIds().before-callback', startTime);
+    endTimer(`bindValidatedDocIds().before-callback [${feed.userCtx.name} => ${feed.validatedIds.length}]`, startTime);
     callback();
   });
 };
@@ -210,10 +210,10 @@ var getChanges = function(feed) {
       }, callback));
     },
     (err, responses) => {
-      endTimer(`getChanges().requests:${chunks.length}`, startTime);
+      endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIds} / ${chunks.length}]`, startTime);
 
       if (feed.res.finished) {
-        // Don't write to the response if it has already ended. The change
+        // Don't write to the response if  has already ended. The change
         // will be picked up in the subsequent changes request.
         return;
       }
@@ -229,7 +229,7 @@ var getChanges = function(feed) {
         }
       }
       feed.res.end();
-      endTimer('getChanges().end', startTime);
+      endTimer(`getChanges().end [${feed.userCtx.name}]`, startTime);
     }
   );
 };
@@ -500,9 +500,21 @@ function startTimer() {
   return Date.now();
 }
 
+var SLOW_MS = 1500;
 function endTimer(name, start) {
   var diff = Date.now() - start;
-  console.log('TIMED SECTION COMPLETE', name, diff, 'ms');
+  // 0-4000:
+  // 4-8000:   VERY SLOW!
+  // 8-12000:  VERY SLOW!!
+  // 12-16000: VERY SLOW!!!
+  // etc
+  var howSlow = Math.ceil((diff - SLOW_MS) / SLOW_MS);
+  var slowNote;
+  if (howSlow > 0) {
+    slowNote = 'VERY SLOW' + Array(howSlow + 1).join('!') + ' ';
+  }
+
+  console.log(`${slowNote}TIMED SECTION COMPLETE`, name, diff, 'ms');
 }
 
 // used for testing
