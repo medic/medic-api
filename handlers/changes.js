@@ -432,11 +432,11 @@ var gated = function(who) {
 };
 var upGate = function(who) {
   performanceGate++;
-  console.log('GATE++ =>' + performanceGate + (who ? ' :: for ' + who : ''));
+  console.log('GATE++ => ' + performanceGate + (who ? ' :: for ' + who : ''));
 };
 var downGate = function(who) {
   performanceGate--;
-  console.log('GATE-- =>' + performanceGate + (who ? ' :: for ' + who : ''));
+  console.log('GATE-- => ' + performanceGate + (who ? ' :: for ' + who : ''));
 };
 
 module.exports = {
