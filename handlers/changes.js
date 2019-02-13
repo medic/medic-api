@@ -168,7 +168,7 @@ var abortAllChangesRequests = feed => {
 };
 
 var cleanUp = function(feed) {
-  performanceGate--;
+  downGate(/*username?*/);
   if (feed.heartbeat) {
     clearInterval(feed.heartbeat);
   }
@@ -391,7 +391,7 @@ var updateFeeds = function(changes) {
       abortAllChangesRequests(feed);
       bindServerIds(feed, function(err) {
         if (err) {
-          performanceGate--;
+          downGate(/*username?*/);
           return serverUtils.error(err, feed.req, feed.res);
         }
         getChanges(feed);
@@ -420,6 +420,14 @@ var init = function(since) {
 };
 
 var performanceGate = 0;
+var upGate = function(who) {
+  console.log('GATE ' + performanceGate + ' => ' + performanceGate + 1 + who ? ' for ' + who : '');
+  performanceGate++;
+}
+var downGate = function(who) {
+  console.log('GATE ' + performanceGate + ' => ' + performanceGate - 1 + who ? ' for ' + who : '');
+  performanceGate--;
+}
 
 module.exports = {
   request: function(proxy, req, res) {
@@ -446,7 +454,7 @@ module.exports = {
         if (performanceGate >= 100) {
           return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
         }
-        performanceGate++;
+        upGate(userCtx.name);
         var feed = {
           req: req,
           res: res,
@@ -457,7 +465,7 @@ module.exports = {
         });
         initFeed(feed, function(err) {
           if (err) {
-            performanceGate--;
+            downGate(userCtx.name);
             return serverUtils.error(err, req, res);
           }
           if (req.query.feed === 'longpoll') {
