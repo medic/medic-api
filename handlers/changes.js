@@ -1,3 +1,5 @@
+var PERFORMANCE_GATE_MAXIMUM = 250;
+
 var _ = require('underscore'),
     async = require('async'),
     auth = require('../auth'),
@@ -419,7 +421,6 @@ var init = function(since) {
   });
 };
 
-var PERFORMANCE_GATE_MAXIMUM = 250;
 var performanceGate = 0;
 var upGate = function(who) {
   console.log('GATE ' + performanceGate + ' => ' + performanceGate + 1 + who ? ' for ' + who : '');
