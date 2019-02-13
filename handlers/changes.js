@@ -170,7 +170,7 @@ var abortAllChangesRequests = feed => {
 };
 
 var cleanUp = function(feed) {
-  downGate(feed.userCtx && feed.userCtx.name);
+  downGate(feed.userCtx);
   if (feed.heartbeat) {
     clearInterval(feed.heartbeat);
   }
@@ -393,7 +393,7 @@ var updateFeeds = function(changes) {
       abortAllChangesRequests(feed);
       bindServerIds(feed, function(err) {
         if (err) {
-          downGate(feed.userCtx && feed.userCtx.name);
+          downGate(feed.userCtx);
           return serverUtils.error(err, feed.req, feed.res);
         }
         getChanges(feed);
@@ -422,21 +422,26 @@ var init = function(since) {
 };
 
 var performanceGate = 0;
-var gated = function(who) {
+var gated = function(userCtx) {
   if (performanceGate >= PERFORMANCE_GATE_MAXIMUM) {
-    console.log('GATE BLOCKED ' + who + ' at ' + performanceGate);
+    console.log('GATE BLOCKED ' + userCtx.name + ' at ' + performanceGate);
     return true;
   } else {
     return false;
   }
 };
-var upGate = function(who) {
+var upGate = function(userCtx) {
   performanceGate++;
-  console.log('GATE++ => ' + performanceGate + (who ? ' :: for ' + who : ''));
+  console.log('GATE++ => ' + performanceGate + ' for ' + userCtx.name);
 };
-var downGate = function(who) {
-  performanceGate--;
-  console.log('GATE-- => ' + performanceGate + (who ? ' :: for ' + who : ''));
+var downGate = function(userCtx) {
+  if (userCtx.downed) {
+    console.log(new Error('GATE attempted a double down on ' + userCtx.name));
+  } else {
+    userCtx.downed = true;
+    performanceGate--;
+    console.log('GATE-- => ' + performanceGate + ' for ' + userCtx.name);
+  }
 };
 
 module.exports = {
@@ -460,10 +465,10 @@ module.exports = {
       if (auth.hasAllPermissions(userCtx, 'can_access_directly')) {
         proxy.web(req, res);
       } else {
-        if (gated(userCtx.name)) {
+        if (gated(userCtx)) {
           return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
         }
-        upGate(userCtx.name);
+        upGate(userCtx);
         var feed = {
           req: req,
           res: res,
@@ -474,7 +479,7 @@ module.exports = {
         });
         initFeed(feed, function(err) {
           if (err) {
-            downGate(userCtx.name);
+            downGate(userCtx);
             return serverUtils.error(err, req, res);
           }
           if (req.query.feed === 'longpoll') {
