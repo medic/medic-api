@@ -417,8 +417,15 @@ var init = function(since) {
   });
 };
 
+var performanceGate = 0;
+
 module.exports = {
   request: function(proxy, req, res) {
+    if (performanceGate >= 100) {
+      return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
+    }
+    performanceGate++;
+
     if (!inited) {
       init();
     }
@@ -443,6 +450,7 @@ module.exports = {
           userCtx: userCtx
         };
         req.on('close', function() {
+          performanceGate--;
           cleanUp(feed);
         });
         initFeed(feed, function(err) {
