@@ -424,11 +424,13 @@ module.exports = {
     if (performanceGate >= 100) {
       return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
     }
+
     performanceGate++;
 
     if (!inited) {
       init();
     }
+
     auth.getUserCtx(req, function(err, userCtx) {
       if (err) {
         performanceGate--;
@@ -456,17 +458,13 @@ module.exports = {
           cleanUp(feed);
         });
         initFeed(feed, function(err) {
-
           if (err) {
-            performanceGate--;
             return serverUtils.error(err, req, res);
           }
-
           if (req.query.feed === 'longpoll') {
             // watch for newly added docs
             continuousFeeds.push(feed);
           }
-
           res.type('json');
           defibrillator(feed);
           getChanges(feed);
