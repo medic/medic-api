@@ -185,6 +185,7 @@ var getChanges = function(feed) {
   var startTime = startTimer();
 
   const allIds = _.union(feed.requestedIds, feed.validatedIds);
+  const allIdsCount = allIds.length;
   const chunks = [];
 
   if (feed.req.query.feed === 'longpoll') {
@@ -210,7 +211,7 @@ var getChanges = function(feed) {
       }, callback));
     },
     (err, responses) => {
-      endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIds.length} / ${chunks.length}]`, startTime);
+      endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIdsCount} / ${chunks.length}]`, startTime);
 
       if (feed.res.finished) {
         // Don't write to the response if  has already ended. The change
