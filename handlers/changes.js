@@ -210,7 +210,7 @@ var getChanges = function(feed) {
       }, callback));
     },
     (err, responses) => {
-      endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIds} / ${chunks.length}]`, startTime);
+      endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIds.length} / ${chunks.length}]`, startTime);
 
       if (feed.res.finished) {
         // Don't write to the response if  has already ended. The change
