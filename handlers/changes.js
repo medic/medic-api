@@ -188,7 +188,9 @@ var getChanges = function(feed) {
   const allIdsCount = allIds.length;
   const chunks = [];
 
-  if (feed.req.query.feed === 'longpoll') {
+  const isLongpoll = feed.req.query.feed === 'longpoll';
+
+  if (isLongpoll) {
     chunks.push(allIds);
   } else {
     while (allIds.length) {
@@ -211,8 +213,6 @@ var getChanges = function(feed) {
       }, callback));
     },
     (err, responses) => {
-      endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIdsCount} / ${chunks.length}]`, startTime);
-
       if (feed.res.finished) {
         // Don't write to the response if  has already ended. The change
         // will be picked up in the subsequent changes request.
@@ -224,13 +224,13 @@ var getChanges = function(feed) {
       } else {
         const changes = mergeChangesResponses(responses);
         if (changes) {
+          endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIdsCount} / ${chunks.length} => ${changes.results.length}]`, startTime, isLongpoll);
           prepareResponse(feed, changes);
         } else {
           feed.res.write(error(503, 'No _changes error, but malformed response.'));
         }
       }
       feed.res.end();
-      endTimer(`getChanges().end [${feed.userCtx.name}]`, startTime);
     }
   );
 };
@@ -502,7 +502,7 @@ function startTimer() {
 }
 
 var SLOW_MS = 1500;
-function endTimer(name, start) {
+function endTimer(name, start, suppressSlowNote) {
   var diff = Date.now() - start;
   // 0-1500:
   // .-3000: VERY SLOW!
@@ -511,7 +511,7 @@ function endTimer(name, start) {
   // etc
   var howSlow = Math.ceil((diff - SLOW_MS) / SLOW_MS);
   var slowNote;
-  if (howSlow > 0) {
+  if (!suppressSlowNote && howSlow > 0) {
     slowNote = 'VERY SLOW' + Array(howSlow + 1).join('!') + ' ';
   }
 
