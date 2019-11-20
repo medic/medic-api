@@ -90,6 +90,39 @@ app.use(function(req, res, next) {
   next();
 });
 
+var WHITELIST_DELAY_MS = 60 * 1000;
+var WHITELIST;
+try {
+  console.log('Attempting to load whitelist');
+  WHITELIST = require('/tmp/whitelist.json');
+  console.log('Whitelist file contains', WHITELIST.length, 'entries, WHITELIST ENABLED');
+} catch(err) {
+  console.log('Whitelist does not exist / is not valid');
+}
+
+if (WHITELIST) {
+  app.all('*', function(req, res, next) {
+    auth.getUserCtx(req, function(err, userCtx) {
+      if (err || // auth errors can be caught in the appropriate later route
+          !userCtx || // !userCtx means not logged in, which is fine
+          _.contains(userCtx.roles, '_admin') // admins are also fine
+      ) {
+        return next();
+      }
+
+      if (WHITELIST.indexOf(userCtx.name) !== -1) {
+        console.log('Whitelist ALLOWED user', userCtx.name);
+        return next();
+      }
+
+      console.log('Whitelist DENIED! user', userCtx.name);
+      setTimeout(function() {
+        serverUtils.error({code: 502}, req, res);
+      }, WHITELIST_DELAY_MS);
+    });
+  });
+}
+
 app.get('/', function(req, res) {
   if (req.headers.accept === 'application/json') {
     // couchdb request - let it go

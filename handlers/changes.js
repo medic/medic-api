@@ -1,3 +1,5 @@
+var PERFORMANCE_GATE_MAXIMUM = 250;
+
 var _ = require('underscore'),
     async = require('async'),
     auth = require('../auth'),
@@ -87,7 +89,7 @@ var bindSubjectIds = function(feed, callback) {
           subjectIds.push(UNASSIGNED_KEY);
         }
         feed.subjectIds = subjectIds;
-        endTimer('bindSubjectIds().before-callback', startTime);
+        endTimer(`bindSubjectIds().before-callback [${feed.userCtx.name} => ${subjectIds.length}]`, startTime);
         callback();
       });
     });
@@ -113,7 +115,7 @@ var isSensitive = function(feed, subject, submitter) {
 var bindValidatedDocIds = function(feed, callback) {
   var startTime = startTimer();
   db.medic.view('medic', 'docs_by_replication_key', { keys: feed.subjectIds }, function(err, viewResult) {
-    endTimer('bindValidatedDocIds().docs_by_replication_key', startTime);
+    endTimer(`bindValidatedDocIds().docs_by_replication_key [${feed.userCtx.name} => ${viewResult.rows.length}]`, startTime);
     if (err) {
       return callback(err);
     }
@@ -123,7 +125,7 @@ var bindValidatedDocIds = function(feed, callback) {
       }
       return ids;
     }, [ '_design/medic-client', 'org.couchdb.user:' + feed.userCtx.name ]);
-    endTimer('bindValidatedDocIds().before-callback', startTime);
+    endTimer(`bindValidatedDocIds().before-callback [${feed.userCtx.name} => ${feed.validatedIds.length}]`, startTime);
     callback();
   });
 };
@@ -168,6 +170,7 @@ var abortAllChangesRequests = feed => {
 };
 
 var cleanUp = function(feed) {
+  downGate(feed.userCtx);
   if (feed.heartbeat) {
     clearInterval(feed.heartbeat);
   }
@@ -182,9 +185,12 @@ var getChanges = function(feed) {
   var startTime = startTimer();
 
   const allIds = _.union(feed.requestedIds, feed.validatedIds);
+  const allIdsCount = allIds.length;
   const chunks = [];
 
-  if (feed.req.query.feed === 'longpoll') {
+  const isLongpoll = feed.req.query.feed === 'longpoll';
+
+  if (isLongpoll) {
     chunks.push(allIds);
   } else {
     while (allIds.length) {
@@ -207,10 +213,8 @@ var getChanges = function(feed) {
       }, callback));
     },
     (err, responses) => {
-      endTimer(`getChanges().requests:${chunks.length}`, startTime);
-
       if (feed.res.finished) {
-        // Don't write to the response if it has already ended. The change
+        // Don't write to the response if  has already ended. The change
         // will be picked up in the subsequent changes request.
         return;
       }
@@ -220,13 +224,13 @@ var getChanges = function(feed) {
       } else {
         const changes = mergeChangesResponses(responses);
         if (changes) {
+          endTimer(`getChanges().requests [${feed.userCtx.name} => ${allIdsCount} / ${chunks.length} => ${changes.results.length}]`, startTime, isLongpoll);
           prepareResponse(feed, changes);
         } else {
           feed.res.write(error(503, 'No _changes error, but malformed response.'));
         }
       }
       feed.res.end();
-      endTimer('getChanges().end', startTime);
     }
   );
 };
@@ -390,6 +394,7 @@ var updateFeeds = function(changes) {
       abortAllChangesRequests(feed);
       bindServerIds(feed, function(err) {
         if (err) {
+          downGate(feed.userCtx);
           return serverUtils.error(err, feed.req, feed.res);
         }
         getChanges(feed);
@@ -417,11 +422,35 @@ var init = function(since) {
   });
 };
 
+var performanceGate = 0;
+var gated = function(userCtx) {
+  if (performanceGate >= PERFORMANCE_GATE_MAXIMUM) {
+    console.log('GATE BLOCKED ' + userCtx.name + ' at ' + performanceGate);
+    return true;
+  } else {
+    return false;
+  }
+};
+var upGate = function(userCtx) {
+  performanceGate++;
+  console.log('GATE++ => ' + performanceGate + ' for ' + userCtx.name);
+};
+var downGate = function(userCtx) {
+  if (userCtx.downed) {
+    console.log(new Error('GATE attempted a double down on ' + userCtx.name));
+  } else {
+    userCtx.downed = true;
+    performanceGate--;
+    console.log('GATE-- => ' + performanceGate + ' for ' + userCtx.name);
+  }
+};
+
 module.exports = {
   request: function(proxy, req, res) {
     if (!inited) {
       init();
     }
+
     auth.getUserCtx(req, function(err, userCtx) {
       if (err) {
         return serverUtils.error(err, req, res);
@@ -437,6 +466,10 @@ module.exports = {
       if (auth.hasAllPermissions(userCtx, 'can_access_directly')) {
         proxy.web(req, res);
       } else {
+        if (gated(userCtx)) {
+          return serverUtils.error({code: 429, message: 'Too many requests globally'}, req, res);
+        }
+        upGate(userCtx);
         var feed = {
           req: req,
           res: res,
@@ -447,6 +480,7 @@ module.exports = {
         });
         initFeed(feed, function(err) {
           if (err) {
+            downGate(userCtx);
             return serverUtils.error(err, req, res);
           }
           if (req.query.feed === 'longpoll') {
@@ -467,9 +501,21 @@ function startTimer() {
   return Date.now();
 }
 
-function endTimer(name, start) {
+var SLOW_MS = 1500;
+function endTimer(name, start, suppressSlowNote) {
   var diff = Date.now() - start;
-  console.log('TIMED SECTION COMPLETE', name, diff, 'ms');
+  // 0-1500:
+  // .-3000: VERY SLOW!
+  // .-4500: VERY SLOW!!
+  // .-6000: VERY SLOW!!!
+  // etc
+  var howSlow = Math.ceil((diff - SLOW_MS) / SLOW_MS);
+  var slowNote;
+  if (!suppressSlowNote && howSlow > 0) {
+    slowNote = 'VERY SLOW' + Array(howSlow + 1).join('!') + ' ';
+  }
+
+  console.log(`${slowNote ? slowNote : ''}TIMED SECTION COMPLETE`, name, diff, 'ms');
 }
 
 // used for testing
